@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Search{% if q %}: {{ q }}{% endif %} — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+
+  <!-- Search Box -->
+  <div class="search-hero">
+    <h2><i class="fas fa-search text-green"></i> Search Members</h2>
+    <form method="GET" action="{{ url_for('search') }}" class="search-form-large" id="searchForm">
+      <div class="search-input-wrap">
+        <i class="fas fa-search search-icon-inner"></i>
+        <input type="text" name="q" value="{{ q }}" class="search-input-large"
+               placeholder="Search by name, state, city, occupation, interests…"
+               autofocus/>
+        <button type="submit" class="btn btn-primary search-submit-btn">Search</button>
+      </div>
+
+      <!-- Advanced Filters -->
+      <div class="search-filters-row">
+        <div class="filter-group">
+          <label>State</label>
+          <select name="state" class="form-control form-control-sm">
+            <option value="">Any State</option>
+            {% for s in states %}
+              <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Gender</label>
+          <select name="gender" class="form-control form-control-sm">
+            <option value="">Any</option>
+            <option value="Male"   {% if filters.gender == 'Male'   %}selected{% endif %}>Men</option>
+            <option value="Female" {% if filters.gender == 'Female' %}selected{% endif %}>Women</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Religion</label>
+          <select name="religion" class="form-control form-control-sm">
+            <option value="">Any</option>
+            {% for r in religions %}
+              <option value="{{ r }}" {% if filters.religion == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Ethnicity</label>
+          <select name="ethnicity" class="form-control form-control-sm">
+            <option value="">Any</option>
+            {% for e in ethnicities %}
+              <option value="{{ e }}" {% if filters.ethnicity == e %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Age</label>
+          <div class="age-range">
+            <input type="number" name="age_min" class="form-control form-control-sm age-input"
+                   value="{{ filters.age_min }}" min="18" max="80" placeholder="18"/>
+            <span>–</span>
+            <input type="number" name="age_max" class="form-control form-control-sm age-input"
+                   value="{{ filters.age_max }}" min="18" max="99" placeholder="99"/>
+          </div>
+        </div>
+        <div class="filter-group filter-btn-group">
+          {% set has_active = filters.state or filters.gender or filters.religion or filters.ethnicity
+                              or filters.age_min != 18 or filters.age_max != 99 %}
+          {% if has_active %}
+            <a href="{{ url_for('search', q=q) }}" class="btn btn-outline btn-sm">
+              <i class="fas fa-times"></i> Clear Filters
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+
+    <!-- Active filter chips -->
+    {% set has_active = filters.state or filters.gender or filters.religion or filters.ethnicity
+                        or filters.age_min != 18 or filters.age_max != 99 %}
+    {% if has_active %}
+      <div class="active-filter-chips">
+        <span class="chip-label">Active filters:</span>
+        {% if filters.state %}
+          <a href="{{ url_for('search', q=q, gender=filters.gender, religion=filters.religion,
+                              ethnicity=filters.ethnicity, age_min=filters.age_min, age_max=filters.age_max) }}"
+             class="filter-chip">{{ filters.state }} <i class="fas fa-times"></i></a>
+        {% endif %}
+        {% if filters.gender %}
+          <a href="{{ url_for('search', q=q, state=filters.state, religion=filters.religion,
+                              ethnicity=filters.ethnicity, age_min=filters.age_min, age_max=filters.age_max) }}"
+             class="filter-chip">{{ filters.gender }} <i class="fas fa-times"></i></a>
+        {% endif %}
+        {% if filters.religion %}
+          <a href="{{ url_for('search', q=q, state=filters.state, gender=filters.gender,
+                              ethnicity=filters.ethnicity, age_min=filters.age_min, age_max=filters.age_max) }}"
+             class="filter-chip">{{ filters.religion }} <i class="fas fa-times"></i></a>
+        {% endif %}
+        {% if filters.ethnicity %}
+          <a href="{{ url_for('search', q=q, state=filters.state, gender=filters.gender,
+                              religion=filters.religion, age_min=filters.age_min, age_max=filters.age_max) }}"
+             class="filter-chip">{{ filters.ethnicity }} <i class="fas fa-times"></i></a>
+        {% endif %}
+        {% if filters.age_min != 18 or filters.age_max != 99 %}
+          <a href="{{ url_for('search', q=q, state=filters.state, gender=filters.gender,
+                              religion=filters.religion, ethnicity=filters.ethnicity) }}"
+             class="filter-chip">Age {{ filters.age_min }}–{{ filters.age_max }} <i class="fas fa-times"></i></a>
+        {% endif %}
+        <a href="{{ url_for('search', q=q) }}" class="filter-chip filter-chip-clear">
+          Clear all <i class="fas fa-times"></i>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if users is not none %}
+    {% if users and users.total > 0 %}
+      <div class="browse-header">
+        <h3>
+          {% if q %}Results for "<strong>{{ q }}</strong>"{% else %}Filtered Results{% endif %}
+          <span class="count-badge">{{ users.total }} found</span>
+        </h3>
+      </div>
+
+      <div class="members-grid">
+        {% for user in users.items %}
+          <div class="member-card">
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=user.username) }}">
+                <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                     class="member-photo" alt="{{ user.username }}"/>
+              </a>
+              {% if user.is_online() %}<span class="online-dot"></span>{% endif %}
+              <button class="like-btn {% if user.id in liked_ids %}liked{% endif %}"
+                      data-uid="{{ user.id }}"><i class="fas fa-heart"></i></button>
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+                {{ user.profile.first_name if user.profile else user.username }}
+                {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ user.profile.city + ', ' if user.profile and user.profile.city else '' }}{{ user.profile.state if user.profile else '' }}
+              </p>
+              {% if user.profile and user.profile.religion %}
+                <span class="goal-tag">{{ user.profile.religion }}</span>
+              {% endif %}
+              {% if user.profile and user.profile.relationship_goal %}
+                <span class="goal-tag">{{ user.profile.relationship_goal }}</span>
+              {% endif %}
+            </div>
+            <div class="member-actions">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+              <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-comment"></i>
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if users.pages > 1 %}
+        <div class="pagination">
+          {% if users.has_prev %}
+            <a href="{{ url_for('search', q=q, page=users.prev_num, **filters) }}" class="page-btn">&laquo; Prev</a>
+          {% endif %}
+          {% for p in users.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <a href="{{ url_for('search', q=q, page=p, **filters) }}"
+                 class="page-btn {% if p == users.page %}active{% endif %}">{{ p }}</a>
+            {% else %}
+              <span class="page-dots">…</span>
+            {% endif %}
+          {% endfor %}
+          {% if users.has_next %}
+            <a href="{{ url_for('search', q=q, page=users.next_num, **filters) }}" class="page-btn">Next &raquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No results found</h3>
+        <p>Try a different name, state, or adjust your filters.</p>
+        <a href="{{ url_for('search') }}" class="btn btn-primary">Clear Search</a>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <!-- No search yet — show suggestions -->
+    <div class="search-suggestions">
+      <h4>Try searching for:</h4>
+      <div class="suggestion-tags">
+        {% for s in ['Lagos','Abuja','Kano','Rivers','Engineer','Doctor','Music','Football','Yoruba','Igbo','Hausa','Enugu'] %}
+          <a href="{{ url_for('search', q=s) }}" class="interest-tag">{{ s }}</a>
+        {% endfor %}
+      </div>
+      <div class="suggestion-tags" style="margin-top:.75rem">
+        <p style="font-size:.85rem;color:#636e72;margin-bottom:.5rem">Or browse by state:</p>
+        {% for s in ['Lagos','FCT - Abuja','Rivers','Kano','Oyo','Delta','Enugu','Imo'] %}
+          <a href="{{ url_for('search', state=s) }}" class="state-pill">{{ s }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.like-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    const uid = this.dataset.uid;
+    fetch(`/like/${uid}`, {method:'POST'})
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'liked')   { this.classList.add('liked'); if(data.mutual) showToast('💚 Mutual match!'); else showToast('❤️ Liked!'); }
+        if (data.status === 'unliked') { this.classList.remove('liked'); }
+      });
+  });
+});
+</script>
+{% endblock %}

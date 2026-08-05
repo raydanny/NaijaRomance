@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Online Now — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+
+  <div class="page-heading">
+    <h2><span class="online-pulse-dot"></span> Online Now</h2>
+    <p class="text-muted">
+      {{ total }} member{{ 's' if total != 1 }} currently active
+      <span class="refresh-pill">
+        Refreshing in <span id="onlineCountdown">60</span>s
+        <a href="{{ url_for('online_members', gender=gender) }}" class="refresh-now-btn" title="Refresh now">
+          <i class="fas fa-sync-alt"></i>
+        </a>
+      </span>
+    </p>
+  </div>
+
+  <!-- Filter -->
+  <div class="online-filter-row">
+    <a href="{{ url_for('online_members') }}"
+       class="sort-tab {% if not gender %}active{% endif %}">Everyone</a>
+    <a href="{{ url_for('online_members', gender='Female') }}"
+       class="sort-tab {% if gender=='Female' %}active{% endif %}">
+      <i class="fas fa-venus"></i> Women
+    </a>
+    <a href="{{ url_for('online_members', gender='Male') }}"
+       class="sort-tab {% if gender=='Male' %}active{% endif %}">
+      <i class="fas fa-mars"></i> Men
+    </a>
+  </div>
+
+  {% if online %}
+    <div class="members-grid">
+      {% for user in online %}
+        <div class="member-card online-card">
+          <div class="member-photo-wrap">
+            <a href="{{ url_for('view_profile', username=user.username) }}">
+              <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                   class="member-photo" alt="{{ user.username }}"/>
+            </a>
+            <span class="online-dot" title="Online now"></span>
+            <button class="like-btn {% if user.id in liked_ids %}liked{% endif %}"
+                    data-uid="{{ user.id }}">
+              <i class="fas fa-heart"></i>
+            </button>
+          </div>
+          <div class="member-info">
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+              {{ user.profile.first_name if user.profile else user.username }}
+              {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+            </a>
+            <p class="member-location">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ user.profile.city + ', ' if user.profile and user.profile.city else '' }}{{ user.profile.state if user.profile else '' }}
+            </p>
+            {% if user.profile and user.profile.relationship_goal %}
+              <span class="goal-tag">{{ user.profile.relationship_goal }}</span>
+            {% endif %}
+          </div>
+          <div class="member-actions">
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+            <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary">
+              <i class="fas fa-comment-dots"></i>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🌙</div>
+      <h3>No one online right now</h3>
+      <p>Check back soon — members are most active in the evenings.</p>
+      <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse All Members</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh online list every 60 seconds with countdown
+let countdown = 60;
+const cdEl = document.getElementById('onlineCountdown');
+
+function tick() {
+  countdown--;
+  if (cdEl) cdEl.textContent = countdown;
+  if (countdown <= 0) {
+    location.reload();
+  } else {
+    setTimeout(tick, 1000);
+  }
+}
+setTimeout(tick, 1000);
+</script>
+{% endblock %}

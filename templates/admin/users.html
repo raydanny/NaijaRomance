@@ -1,0 +1,122 @@
+{% extends "admin/base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+{% block content %}
+
+<div class="admin-card">
+  <div class="admin-card-head">
+    <h3>All Members ({{ users.total }})</h3>
+    <form method="GET" action="{{ url_for('admin_users') }}" class="admin-search-form">
+      <input type="text" name="q" value="{{ search }}" class="form-control admin-search-input"
+             placeholder="Search username or email…"/>
+      <button type="submit" class="btn btn-primary btn-sm">Search</button>
+      {% if search %}<a href="{{ url_for('admin_users') }}" class="btn btn-outline btn-sm">Clear</a>{% endif %}
+    </form>
+  </div>
+
+  <table class="admin-table admin-table-full">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Email</th>
+        <th>State</th>
+        <th>Gender</th>
+        <th>Strength</th>
+        <th>Joined</th>
+        <th>Last Seen</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users.items %}
+        {% set strength, _ = u.profile_strength() %}
+        <tr class="{% if not u.is_active_acc %}row-banned{% endif %} {% if u.is_hidden %}row-hidden{% endif %}">
+          <td>
+            <div class="admin-user-cell">
+              <img src="{{ url_for('static', filename=u.get_photo_url()) }}"
+                   class="admin-user-thumb"/>
+              <div>
+                <a href="{{ url_for('view_profile', username=u.username) }}" target="_blank">
+                  <strong>{{ u.profile.first_name if u.profile else '—' }}</strong>
+                </a>
+                <small>@{{ u.username }}</small>
+                {% if u.is_hidden %}<small class="badge-hidden">Hidden</small>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.profile.state if u.profile else '—' }}</td>
+          <td>{{ u.profile.gender if u.profile else '—' }}</td>
+          <td>
+            <div class="strength-mini-wrap" title="{{ strength }}% complete">
+              <div class="strength-mini-bar
+                {% if strength >= 80 %}fill-great{% elif strength >= 50 %}fill-ok{% else %}fill-low{% endif %}"
+                style="width:{{ strength }}%"></div>
+            </div>
+            <small>{{ strength }}%</small>
+          </td>
+          <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td>
+            <span class="{% if u.is_online() %}text-green{% else %}text-muted{% endif %}">
+              {{ u.last_seen.strftime('%d %b, %H:%M') if u.last_seen else '—' }}
+            </span>
+          </td>
+          <td>
+            <span class="status-dot {% if u.is_active_acc %}dot-active{% else %}dot-inactive{% endif %}">
+              {{ 'Active' if u.is_active_acc else 'Banned' }}
+            </span>
+          </td>
+          <td>
+            <div class="admin-action-btns">
+              <form method="POST" action="{{ url_for('admin_toggle_user', user_id=u.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-xs {% if u.is_active_acc %}btn-warning{% else %}btn-success{% endif %}"
+                        onclick="return confirm('{{ 'Deactivate' if u.is_active_acc else 'Activate' }} this user?')">
+                  {{ 'Ban' if u.is_active_acc else 'Unban' }}
+                </button>
+              </form>
+              <form method="POST" action="{{ url_for('admin_hide_user', user_id=u.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-xs {% if u.is_hidden %}btn-success{% else %}btn-outline{% endif %}"
+                        title="{{ 'Make visible' if u.is_hidden else 'Hide from browse' }}">
+                  {{ '👁 Show' if u.is_hidden else '🙈 Hide' }}
+                </button>
+              </form>
+              {% if u.username not in ['admin','naijaadmin'] %}
+                <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.id) }}" style="display:inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="btn btn-xs btn-danger"
+                          onclick="return confirm('PERMANENTLY delete @{{ u.username }}? This cannot be undone.')">
+                    Delete
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  {% if users.pages > 1 %}
+    <div class="pagination" style="padding:1rem 1.5rem;">
+      {% if users.has_prev %}
+        <a href="{{ url_for('admin_users', page=users.prev_num, q=search) }}" class="page-btn">&laquo; Prev</a>
+      {% endif %}
+      {% for p in users.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="{{ url_for('admin_users', page=p, q=search) }}"
+             class="page-btn {% if p == users.page %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span class="page-dots">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if users.has_next %}
+        <a href="{{ url_for('admin_users', page=users.next_num, q=search) }}" class="page-btn">Next &raquo;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

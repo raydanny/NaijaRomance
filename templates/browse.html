@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Browse Members — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="browse-page">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <form method="GET" action="{{ url_for('browse') }}" class="filter-form" id="filterForm">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>State</label>
+          <select name="state" class="form-control" onchange="this.form.submit()">
+            <option value="">All States</option>
+            {% for s in states %}
+              <option value="{{ s }}" {% if filters.state==s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Gender</label>
+          <select name="gender" class="form-control" onchange="this.form.submit()">
+            <option value="">Any</option>
+            <option value="Male"   {% if filters.gender=='Male'   %}selected{% endif %}>Men</option>
+            <option value="Female" {% if filters.gender=='Female' %}selected{% endif %}>Women</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Age</label>
+          <div class="age-range">
+            <input type="number" name="age_min" class="form-control age-input"
+                   value="{{ filters.age_min }}" min="18" max="80" placeholder="18"/>
+            <span>–</span>
+            <input type="number" name="age_max" class="form-control age-input"
+                   value="{{ filters.age_max }}" min="18" max="99" placeholder="60"/>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Goal</label>
+          <select name="goal" class="form-control" onchange="this.form.submit()">
+            <option value="">Any Goal</option>
+            {% for g in relationship_goals %}
+              <option value="{{ g }}" {% if filters.goal==g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group filter-btn-group">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i> Filter
+          </button>
+          <a href="{{ url_for('browse') }}" class="btn btn-outline">Clear</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Body: grid + sidebar -->
+  <div class="browse-body">
+
+    <!-- Members Section -->
+    <div class="browse-main">
+      <div class="browse-header">
+        <div>
+          <h2>
+            {% if filters.state %}{{ filters.state }}{% else %}All Nigeria{% endif %}
+            <span class="count-badge">{{ users.total }} found</span>
+          </h2>
+        </div>
+        <!-- Sort tabs -->
+        <div class="sort-tabs">
+          <button class="sort-tab {% if not filters.sort or filters.sort=='active' %}active{% endif %}" data-sort="active">
+            <span class="online-pulse-dot-sm"></span> Active
+          </button>
+          <button class="sort-tab {% if filters.sort=='new' %}active{% endif %}" data-sort="new">
+            <i class="fas fa-star"></i> Newest
+          </button>
+          <button class="sort-tab {% if filters.sort=='near' %}active{% endif %}" data-sort="near">
+            <i class="fas fa-map-marker-alt"></i> Near Me
+          </button>
+        </div>
+      </div>
+
+      {% if users.items %}
+        <div class="members-grid" id="membersGrid">
+          {% for user in users.items %}
+            {% set photo_count = user.photos|length %}
+            <div class="member-card">
+              <div class="member-photo-wrap">
+                <a href="{{ url_for('view_profile', username=user.username) }}">
+                  <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                       class="member-photo" alt="{{ user.username }}"/>
+                </a>
+                {% if user.is_online() %}<span class="online-dot" title="Online now"></span>{% endif %}
+                <button class="like-btn {% if user.id in liked_ids %}liked{% endif %}"
+                        data-uid="{{ user.id }}" title="Like">
+                  <i class="fas fa-heart"></i>
+                </button>
+                {% if photo_count > 1 %}
+                  <span class="card-photo-count" title="{{ photo_count }} photos">
+                    <i class="fas fa-images"></i> {{ photo_count }}
+                  </span>
+                {% endif %}
+              </div>
+              <div class="member-info">
+                <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+                  {{ user.profile.first_name if user.profile else user.username }}
+                  {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+                </a>
+                <p class="member-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  {{ user.profile.city + ', ' if user.profile and user.profile.city else '' }}{{ user.profile.state if user.profile else '' }}
+                </p>
+                {% if user.profile and user.profile.interests_list() %}
+                  <div class="card-interests">
+                    {% for interest in user.profile.interests_list()[:2] %}
+                      <span class="interest-tag-sm">{{ interest }}</span>
+                    {% endfor %}
+                  </div>
+                {% elif user.profile and user.profile.relationship_goal %}
+                  <span class="goal-tag">{{ user.profile.relationship_goal }}</span>
+                {% endif %}
+                <p class="card-timeago">
+                  <i class="fas fa-circle" style="color:{% if user.is_online() %}#27ae60{% else %}#b2bec3{% endif %};font-size:.45rem;vertical-align:middle"></i>
+                  {{ user.last_seen | timeago if user.last_seen else '' }}
+                </p>
+              </div>
+              <div class="member-actions">
+                <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+                <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-comment"></i>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if users.pages > 1 %}
+          <div class="pagination">
+            {% if users.has_prev %}
+              <a href="{{ url_for('browse', page=users.prev_num, **filters) }}" class="page-btn">&laquo; Prev</a>
+            {% endif %}
+            {% for p in users.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                <a href="{{ url_for('browse', page=p, **filters) }}"
+                   class="page-btn {% if p==users.page %}active{% endif %}">{{ p }}</a>
+              {% else %}
+                <span class="page-dots">…</span>
+              {% endif %}
+            {% endfor %}
+            {% if users.has_next %}
+              <a href="{{ url_for('browse', page=users.next_num, **filters) }}" class="page-btn">Next &raquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <h3>No members found</h3>
+          <p>Try adjusting your filters.</p>
+          <a href="{{ url_for('browse') }}" class="btn btn-primary">Clear Filters</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Trending States Sidebar -->
+    <aside class="browse-sidebar">
+      <div class="trending-widget">
+        <h4 class="widget-title"><i class="fas fa-fire" style="color:#e74c3c"></i> Trending States</h4>
+        <div id="trendingStates">
+          <div class="widget-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+      </div>
+
+      <div class="trending-widget" style="margin-top:1rem">
+        <h4 class="widget-title"><i class="fas fa-bolt" style="color:#f39c12"></i> Quick Links</h4>
+        <div class="quick-state-links">
+          {% for s in ['Lagos','FCT - Abuja','Rivers','Kano','Oyo','Delta','Enugu','Imo'] %}
+            <a href="{{ url_for('browse', state=s) }}" class="state-pill">{{ s }}</a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="trending-widget" style="margin-top:1rem">
+        <h4 class="widget-title"><i class="fas fa-star text-green"></i> My Matches</h4>
+        <p style="font-size:.83rem;color:#636e72;margin-bottom:.8rem">
+          See profiles hand-picked for you
+        </p>
+        <a href="{{ url_for('daily_matches') }}" class="btn btn-primary btn-block btn-sm">
+          View My Matches
+        </a>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Like buttons */
+document.querySelectorAll('.like-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    fetch(`/like/${this.dataset.uid}`, {method:'POST'}).then(r=>r.json()).then(data=>{
+      if (data.status==='liked')   { this.classList.add('liked');    if(data.mutual) showToast('💚 Mutual match!'); else showToast('❤️ Liked!'); }
+      if (data.status==='unliked') { this.classList.remove('liked'); }
+    });
+  });
+});
+
+/* Load trending states */
+fetch('/api/trending-states').then(r=>r.json()).then(data=>{
+  const el = document.getElementById('trendingStates');
+  if (!data.length) { el.innerHTML='<p style="font-size:.82rem;color:#636e72;padding:.5rem">Not enough data yet</p>'; return; }
+  const max = data[0].count || 1;
+  el.innerHTML = data.map(d=>`
+    <a href="/browse?state=${encodeURIComponent(d.state)}" class="trending-state-row">
+      <span class="ts-name">${d.state}</span>
+      <div class="ts-bar-bg"><div class="ts-bar-fill" style="width:${Math.round(d.count/max*100)}%"></div></div>
+      <span class="ts-count">${d.count}</span>
+    </a>`).join('');
+}).catch(()=>{
+  document.getElementById('trendingStates').innerHTML='';
+});
+</script>
+{% endblock %}

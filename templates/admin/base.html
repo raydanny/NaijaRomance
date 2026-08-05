@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Admin{% endblock %} — NaijaRomance Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body class="admin-body">
+
+<div class="admin-layout">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-brand">
+      <span>💚</span> NaijaRomance
+      <small>Admin Panel</small>
+    </div>
+    <nav class="admin-nav">
+      <a href="{{ url_for('admin_dashboard') }}"
+         class="admin-nav-item {% if request.endpoint=='admin_dashboard' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="{{ url_for('admin_users') }}"
+         class="admin-nav-item {% if request.endpoint=='admin_users' %}active{% endif %}">
+        <i class="fas fa-users"></i> Users
+      </a>
+      <a href="{{ url_for('admin_reports') }}"
+         class="admin-nav-item {% if request.endpoint=='admin_reports' %}active{% endif %}">
+        <i class="fas fa-flag"></i> Reports
+        {% if pending_reports is defined and pending_reports > 0 %}
+          <span class="admin-badge">{{ pending_reports }}</span>
+        {% endif %}
+      </a>
+      <div class="admin-nav-divider"></div>
+      <a href="{{ url_for('browse') }}" class="admin-nav-item">
+        <i class="fas fa-globe"></i> View Site
+      </a>
+      <a href="{{ url_for('logout') }}" class="admin-nav-item admin-nav-logout">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <div class="admin-main">
+    <header class="admin-header">
+      <h1 class="admin-page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+      <div class="admin-header-right">
+        <span class="admin-user-tag">
+          <i class="fas fa-shield-alt"></i> {{ current_user.username }}
+        </span>
+      </div>
+    </header>
+
+    <!-- Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}" style="margin:0 1.5rem 1rem;">
+          {{ msg }}
+          <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="admin-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

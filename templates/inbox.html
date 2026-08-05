@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Messages — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:700px;margin:2rem auto;">
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+      <h2><i class="fas fa-envelope"></i> My Messages</h2>
+      <div class="inbox-search-wrap">
+        <i class="fas fa-search inbox-search-icon"></i>
+        <input type="text" id="inboxSearch" class="inbox-search-input"
+               placeholder="Search conversations…" autocomplete="off"/>
+      </div>
+    </div>
+
+    {% if conversations %}
+      <div class="conversation-list" id="convList">
+        {% for conv in conversations %}
+          <div class="conv-row" data-name="{{ (conv.partner.profile.first_name if conv.partner.profile else conv.partner.username)|lower }} {{ conv.partner.username|lower }}">
+            <a href="{{ url_for('conversation', username=conv.partner.username) }}" class="conv-item {% if conv.unread %}conv-unread{% endif %}">
+              <div class="conv-avatar-wrap">
+                <img src="{{ url_for('static', filename=conv.partner.get_photo_url()) }}"
+                     class="conv-avatar" alt="{{ conv.partner.username }}"/>
+                {% if conv.partner.is_online() %}
+                  <span class="online-dot conv-online" title="Online now"></span>
+                {% endif %}
+              </div>
+              <div class="conv-body">
+                <div class="conv-top">
+                  <span class="conv-name">
+                    {{ conv.partner.profile.first_name if conv.partner.profile else conv.partner.username }}
+                    {% if conv.partner.is_online() %}
+                      <span class="conv-online-label">Online</span>
+                    {% else %}
+                      <span class="conv-seen-label">
+                        {{ conv.partner.last_seen | timeago if conv.partner.last_seen else '' }}
+                      </span>
+                    {% endif %}
+                  </span>
+                  <span class="conv-time">{{ conv.last_msg.sent_at | timeago if conv.last_msg else '' }}</span>
+                </div>
+                <div class="conv-preview">
+                  {% if conv.last_msg %}
+                    {% if conv.last_msg.sender_id == current_user.id %}<span class="you-label">You: </span>{% endif %}
+                    {{ conv.last_msg.body[:60] }}{% if conv.last_msg.body|length > 60 %}...{% endif %}
+                  {% endif %}
+                </div>
+              </div>
+              {% if conv.unread > 0 %}
+                <span class="unread-badge">{{ conv.unread }}</span>
+              {% endif %}
+            </a>
+            <!-- Delete conversation button -->
+            <form method="POST"
+                  action="{{ url_for('delete_conversation', username=conv.partner.username) }}"
+                  class="conv-delete-form"
+                  onsubmit="return confirm('Delete all messages with {{ conv.partner.profile.first_name if conv.partner.profile else conv.partner.username }}?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="conv-delete-btn" title="Delete conversation">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </form>
+          </div>
+        {% endfor %}
+        <div class="inbox-no-results" id="inboxNoResults" style="display:none">
+          <div class="empty-state" style="padding:2rem">
+            <div class="empty-icon">🔍</div>
+            <h3>No conversations match</h3>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h3>No messages yet</h3>
+        <p>Browse profiles and start a conversation!</p>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse Members</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const searchInput = document.getElementById('inboxSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('#convList .conv-row[data-name]').forEach(row => {
+      const match = !q || row.dataset.name.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const noResults = document.getElementById('inboxNoResults');
+    if (noResults) noResults.style.display = visible === 0 && q ? 'block' : 'none';
+  });
+}
+</script>
+{% endblock %}

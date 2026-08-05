@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+
+  <!-- Welcome Row -->
+  <div class="dashboard-welcome">
+    <a href="{{ url_for('view_profile', username=current_user.username) }}">
+      <img src="{{ url_for('static', filename=current_user.get_photo_url()) }}"
+           class="dash-avatar" alt=""/>
+    </a>
+    <div class="dash-welcome-text">
+      <h1>Welcome, {{ current_user.profile.first_name if current_user.profile else current_user.username }}! 👋</h1>
+      <p>{{ current_user.profile.state if current_user.profile and current_user.profile.state else '' }}
+         {% if current_user.profile and current_user.profile.relationship_goal %}
+           · Looking for {{ current_user.profile.relationship_goal }}
+         {% endif %}
+      </p>
+    </div>
+    {% if not (current_user.profile and current_user.profile.profile_complete) %}
+      <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Complete Profile</a>
+    {% endif %}
+  </div>
+
+  <!-- Profile Completion Banner (shown when strength < 60) -->
+  {% if strength_score < 60 %}
+    <div class="completion-banner">
+      <div class="completion-banner-icon">📝</div>
+      <div class="completion-banner-text">
+        <strong>Your profile is {{ strength_score }}% complete</strong>
+        <span>Add {{ strength_missing[0] if strength_missing else 'more details' }} to get more matches and appear higher in search.</span>
+      </div>
+      <a href="{{ url_for('edit_profile') }}" class="btn btn-primary btn-sm">Complete Now</a>
+      <button class="completion-banner-close" onclick="this.closest('.completion-banner').style.display='none'" title="Dismiss">&times;</button>
+    </div>
+  {% endif %}
+
+  <!-- Profile Strength Bar -->
+  <div class="strength-card">
+    <div class="strength-header">
+      <span><i class="fas fa-chart-bar"></i> Profile Strength</span>
+      <span class="strength-pct {% if strength_score >= 80 %}pct-great{% elif strength_score >= 50 %}pct-ok{% else %}pct-low{% endif %}">
+        {{ strength_score }}%
+      </span>
+    </div>
+    <div class="strength-bar-bg">
+      <div class="strength-bar-fill
+        {% if strength_score >= 80 %}fill-great
+        {% elif strength_score >= 50 %}fill-ok
+        {% else %}fill-low{% endif %}"
+        style="width:{{ strength_score }}%"></div>
+    </div>
+    {% if strength_missing %}
+      <p class="strength-tip">
+        <i class="fas fa-lightbulb"></i>
+        Add: {{ strength_missing[:4]|join(', ') }}{% if strength_missing|length > 4 %} &amp; more{% endif %}
+        to attract more matches.
+        <a href="{{ url_for('edit_profile') }}">Edit Profile →</a>
+      </p>
+    {% else %}
+      <p class="strength-tip text-green"><i class="fas fa-check-circle"></i> Your profile is complete. Great job!</p>
+    {% endif %}
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="color:#e74c3c"><i class="fas fa-heart"></i></div>
+      <div class="stat-data">
+        <span class="stat-number">{{ likes_received }}</span>
+        <span class="stat-label">Likes Received</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:#27ae60"><i class="fas fa-handshake"></i></div>
+      <div class="stat-data">
+        <span class="stat-number">{{ mutual_count }}</span>
+        <span class="stat-label">Mutual Matches</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:#3498db"><i class="fas fa-envelope"></i></div>
+      <div class="stat-data">
+        <span class="stat-number">{{ messages_unread }}</span>
+        <span class="stat-label">Unread Messages</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:#9b59b6"><i class="fas fa-eye"></i></div>
+      <div class="stat-data">
+        <span class="stat-number">{{ profile_views }}</span>
+        <span class="stat-label">Profile Views</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <a href="{{ url_for('browse') }}" class="action-card">
+      <i class="fas fa-search"></i><span>Browse</span>
+    </a>
+    <a href="{{ url_for('my_likes') }}" class="action-card">
+      <i class="fas fa-heart"></i><span>Likes</span>
+    </a>
+    <a href="{{ url_for('inbox') }}" class="action-card">
+      <i class="fas fa-envelope"></i><span>Messages</span>
+      {% if messages_unread > 0 %}<span class="badge">{{ messages_unread }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('my_winks') }}" class="action-card">
+      <span style="font-size:1.4rem;display:block;margin-bottom:.3rem">😉</span><span>Winks</span>
+      {% if wink_count > 0 %}<span class="badge">{{ wink_count }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('profile_viewers') }}" class="action-card">
+      <i class="fas fa-eye"></i><span>Viewers</span>
+    </a>
+    <a href="{{ url_for('notifications') }}" class="action-card">
+      <i class="fas fa-bell"></i><span>Alerts</span>
+      {% if notif_count > 0 %}<span class="badge">{{ notif_count }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('edit_profile') }}" class="action-card">
+      <i class="fas fa-edit"></i><span>Edit Profile</span>
+    </a>
+  </div>
+
+  <div class="dash-two-col">
+    <!-- Recent Likes -->
+    {% if recent_likes %}
+      <div class="dash-section">
+        <div class="dash-section-head">
+          <h3><i class="fas fa-heart text-red"></i> Liked You Recently</h3>
+          <a href="{{ url_for('my_likes') }}" class="dash-see-all">See all →</a>
+        </div>
+        <div class="recent-likes-row">
+          {% for user in recent_likes %}
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="recent-like-item">
+              <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                   class="recent-like-photo" alt=""/>
+              <span>{{ user.profile.first_name if user.profile else user.username }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Recent Viewers -->
+    {% if recent_viewers %}
+      <div class="dash-section">
+        <div class="dash-section-head">
+          <h3><i class="fas fa-eye" style="color:#9b59b6"></i> Viewed Your Profile</h3>
+          <a href="{{ url_for('profile_viewers') }}" class="dash-see-all">See all →</a>
+        </div>
+        <div class="recent-likes-row">
+          {% for user in recent_viewers %}
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="recent-like-item">
+              <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                   class="recent-like-photo" alt=""/>
+              <span>{{ user.profile.first_name if user.profile else user.username }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Suggested People -->
+  {% if suggested_users %}
+    <div class="dash-section" style="margin-top:1.5rem">
+      <div class="dash-section-head">
+        <h3><i class="fas fa-star text-green"></i> People You May Like</h3>
+        <a href="{{ url_for('daily_matches') }}" class="dash-see-all">See all matches →</a>
+      </div>
+      <div class="suggested-grid">
+        {% for user in suggested_users %}
+          <div class="suggested-card">
+            <a href="{{ url_for('view_profile', username=user.username) }}">
+              <div class="suggested-photo-wrap">
+                <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                     class="suggested-photo" alt=""/>
+                {% if user.is_online() %}<span class="online-dot sug-dot"></span>{% endif %}
+              </div>
+            </a>
+            <div class="suggested-info">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="suggested-name">
+                {{ user.profile.first_name if user.profile else user.username }}
+                {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+              </a>
+              <p class="suggested-loc">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ user.profile.state if user.profile else '' }}
+              </p>
+            </div>
+            <div class="suggested-actions">
+              <button class="btn btn-sm btn-primary like-btn {% if user.id in liked_ids %}liked{% endif %}"
+                      data-uid="{{ user.id }}">
+                <i class="fas fa-heart"></i>
+              </button>
+              <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-outline">
+                <i class="fas fa-comment"></i>
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

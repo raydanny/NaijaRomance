@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:820px;margin:2rem auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-edit"></i> Edit My Profile</h2>
+      <p>Complete your profile to get more matches</p>
+    </div>
+
+    <!-- Profile Strength Bar -->
+    <div class="strength-card" style="margin:1rem 1.5rem 0;">
+      <div class="strength-header">
+        <span><i class="fas fa-chart-bar"></i> Profile Strength</span>
+        <span class="strength-pct {% if strength_score >= 80 %}pct-great{% elif strength_score >= 50 %}pct-ok{% else %}pct-low{% endif %}">
+          {{ strength_score }}%
+        </span>
+      </div>
+      <div class="strength-bar-bg">
+        <div class="strength-bar-fill
+          {% if strength_score >= 80 %}fill-great
+          {% elif strength_score >= 50 %}fill-ok
+          {% else %}fill-low{% endif %}"
+          style="width:{{ strength_score }}%"></div>
+      </div>
+      {% if strength_missing %}
+        <p class="strength-tip">
+          <i class="fas fa-lightbulb"></i> Still missing: {{ strength_missing[:5]|join(' · ') }}
+        </p>
+      {% else %}
+        <p class="strength-tip text-green"><i class="fas fa-check-circle"></i> Profile complete!</p>
+      {% endif %}
+    </div>
+
+    <form method="POST" action="{{ url_for('edit_profile') }}" enctype="multipart/form-data" class="edit-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+      <!-- Photo Upload -->
+      <div class="form-section">
+        <h3 class="section-heading">
+          <i class="fas fa-camera"></i> Profile Photos
+          <span class="photo-count-badge {% if photo_count >= max_photos %}badge-full{% endif %}">
+            {{ photo_count }} / {{ max_photos }}
+          </span>
+        </h3>
+        <div class="current-photos">
+          {% for photo in current_user.photos %}
+            <div class="photo-manage-item">
+              <img src="{{ url_for('static', filename='uploads/' + photo.filename) }}"
+                   class="photo-manage-thumb"/>
+              <div class="photo-manage-btns">
+                {% if not photo.is_main %}
+                  <form method="POST" action="{{ url_for('set_main_photo', photo_id=photo.id) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-xs btn-outline">Set Main</button>
+                  </form>
+                {% else %}
+                  <span class="btn btn-xs btn-success">Main ✓</span>
+                {% endif %}
+                <form method="POST" action="{{ url_for('delete_photo', photo_id=photo.id) }}" style="display:inline"
+                      onsubmit="return confirm('Delete this photo?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% else %}
+            <p class="text-muted">No photos yet. Upload one below!</p>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          <label for="photo">Upload New Photo (max 5MB)</label>
+          {% if photo_count >= max_photos %}
+            <div class="alert alert-warning" style="margin-bottom:0">
+              <i class="fas fa-exclamation-triangle"></i>
+              Photo limit reached ({{ max_photos }} max). Delete a photo above to upload a new one.
+            </div>
+          {% else %}
+          <div class="photo-drop-zone" id="photoDropZone">
+            <i class="fas fa-cloud-upload-alt photo-drop-icon"></i>
+            <p class="photo-drop-text">Drag &amp; drop a photo here, or <label for="photo" class="photo-drop-link">browse</label></p>
+            <p class="photo-drop-hint">PNG, JPG, WEBP — max 5 MB</p>
+            <div class="photo-drop-preview" id="photoPreview" style="display:none">
+              <img id="previewImg" src="" alt="Preview"/>
+              <span id="previewName" class="photo-drop-fname"></span>
+            </div>
+          </div>
+          <input type="file" id="photo" name="photo" class="photo-file-input" accept="image/*"/>
+          <div class="photo-upload-progress" id="uploadProgress" style="display:none">
+            <div class="photo-upload-bar" id="uploadBar"></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Basic Info -->
+      <div class="form-section">
+        <h3 class="section-heading"><i class="fas fa-user"></i> Basic Information</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name <span class="req">*</span></label>
+            <input type="text" name="first_name" class="form-control" value="{{ profile.first_name or '' }}" required/>
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" name="last_name" class="form-control" value="{{ profile.last_name or '' }}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Gender <span class="req">*</span></label>
+            <select name="gender" class="form-control">
+              <option value="">Select...</option>
+              <option value="Male" {% if profile.gender=='Male' %}selected{% endif %}>Male</option>
+              <option value="Female" {% if profile.gender=='Female' %}selected{% endif %}>Female</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Seeking</label>
+            <select name="seeking" class="form-control">
+              <option value="">Select...</option>
+              <option value="Female" {% if profile.seeking=='Female' %}selected{% endif %}>Women</option>
+              <option value="Male" {% if profile.seeking=='Male' %}selected{% endif %}>Men</option>
+              <option value="Both" {% if profile.seeking=='Both' %}selected{% endif %}>Both</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date of Birth <span class="req">*</span></label>
+            <input type="date" name="date_of_birth" class="form-control"
+                   value="{{ profile.date_of_birth.strftime('%Y-%m-%d') if profile.date_of_birth else '' }}"/>
+          </div>
+          <div class="form-group">
+            <label>Height (cm)</label>
+            <input type="number" name="height_cm" class="form-control"
+                   value="{{ profile.height_cm or '' }}" placeholder="e.g. 170" min="100" max="250"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="form-section">
+        <h3 class="section-heading"><i class="fas fa-map-marker-alt"></i> Location</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>State <span class="req">*</span></label>
+            <select name="state" class="form-control">
+              <option value="">Select state...</option>
+              {% for s in states %}
+                <option value="{{ s }}" {% if profile.state==s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>City / LGA</label>
+            <input type="text" name="city" class="form-control" value="{{ profile.city or '' }}" placeholder="e.g. Ikeja"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Background -->
+      <div class="form-section">
+        <h3 class="section-heading"><i class="fas fa-users"></i> Background</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ethnicity</label>
+            <select name="ethnicity" class="form-control">
+              <option value="">Select...</option>
+              {% for e in ethnicities %}
+                <option value="{{ e }}" {% if profile.ethnicity==e %}selected{% endif %}>{{ e }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Religion</label>
+            <select name="religion" class="form-control">
+              <option value="">Select...</option>
+              {% for r in religions %}
+                <option value="{{ r }}" {% if profile.religion==r %}selected{% endif %}>{{ r }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Education</label>
+            <select name="education" class="form-control">
+              <option value="">Select...</option>
+              {% for ed in education_levels %}
+                <option value="{{ ed }}" {% if profile.education==ed %}selected{% endif %}>{{ ed }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Occupation</label>
+            <input type="text" name="occupation" class="form-control"
+                   value="{{ profile.occupation or '' }}" placeholder="e.g. Engineer, Teacher"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Body Type</label>
+            <select name="body_type" class="form-control">
+              <option value="">Select...</option>
+              {% for b in body_types %}
+                <option value="{{ b }}" {% if profile.body_type==b %}selected{% endif %}>{{ b }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Relationship Goal</label>
+            <select name="relationship_goal" class="form-control">
+              <option value="">Select...</option>
+              {% for g in relationship_goals %}
+                <option value="{{ g }}" {% if profile.relationship_goal==g %}selected{% endif %}>{{ g }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="form-section">
+        <h3 class="section-heading"><i class="fas fa-pen"></i> About Me</h3>
+        <div class="form-group">
+          <label>Describe Yourself <span class="req">*</span></label>
+          <textarea name="about_me" id="aboutMe" class="form-control" rows="5"
+                    placeholder="Tell potential matches about yourself — your personality, hobbies, what makes you unique…"
+                    maxlength="1000">{{ profile.about_me or '' }}</textarea>
+          <div class="char-counter"><span id="aboutMeCount">{{ (profile.about_me or '')|length }}</span> / 1000</div>
+        </div>
+        <div class="form-group">
+          <label>Interests <span class="form-hint" style="font-size:.8rem;color:#636e72;">(click to select/deselect)</span></label>
+          <!-- Hidden input stores the comma-separated value submitted with the form -->
+          <input type="hidden" id="interestsHidden" name="interests"
+                 value="{{ profile.interests or '' }}"/>
+          <!-- Tag cloud picker -->
+          <div class="interests-picker" id="interestsPicker">
+            {% for interest in interests_pool %}
+              <button type="button"
+                      class="interest-pick-tag {% if interest in (profile.interests or '') %}selected{% endif %}"
+                      data-interest="{{ interest }}">
+                {{ interest }}
+              </button>
+            {% endfor %}
+          </div>
+          <p class="form-hint" style="margin-top:.4rem">
+            Selected: <span id="interestCount">{{ profile.interests_list()|length }}</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="fas fa-save"></i> Save Profile
+        </button>
+        <a href="{{ url_for('view_profile', username=current_user.username) }}" class="btn btn-outline btn-lg">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Interests Tag Picker ── */
+(function() {
+  const picker  = document.getElementById('interestsPicker');
+  const hidden  = document.getElementById('interestsHidden');
+  const counter = document.getElementById('interestCount');
+  if (!picker || !hidden) return;
+
+  // Parse existing interests into a Set
+  const selected = new Set(
+    hidden.value.split(',').map(s => s.trim()).filter(Boolean)
+  );
+
+  // Reflect initial state on buttons
+  picker.querySelectorAll('.interest-pick-tag').forEach(btn => {
+    if (selected.has(btn.dataset.interest)) btn.classList.add('selected');
+  });
+
+  function sync() {
+    hidden.value = [...selected].join(', ');
+    if (counter) counter.textContent = selected.size;
+  }
+
+  picker.addEventListener('click', function(e) {
+    const btn = e.target.closest('.interest-pick-tag');
+    if (!btn) return;
+    const interest = btn.dataset.interest;
+    if (selected.has(interest)) {
+      selected.delete(interest);
+      btn.classList.remove('selected');
+    } else {
+      selected.add(interest);
+      btn.classList.add('selected');
+    }
+    sync();
+  });
+})();
+
+/* ── About Me char counter ── */
+const aboutMe = document.getElementById('aboutMe');
+const aboutMeCount = document.getElementById('aboutMeCount');
+if (aboutMe && aboutMeCount) {
+  aboutMe.addEventListener('input', () => {
+    const len = aboutMe.value.length;
+    aboutMeCount.textContent = len;
+    aboutMeCount.style.color = len > 900 ? 'var(--red)' : '';
+  });
+}
+
+/* ── Photo drag-and-drop ── */
+const dropZone   = document.getElementById('photoDropZone');
+const fileInput  = document.getElementById('photo');
+const preview    = document.getElementById('photoPreview');
+const previewImg = document.getElementById('previewImg');
+const previewName= document.getElementById('previewName');
+
+function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('File too large (max 5 MB)', '#e74c3c'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewImg.src = e.target.result;
+    previewName.textContent = file.name;
+    preview.style.display = 'block';
+    dropZone.classList.add('dz-has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+if (dropZone && fileInput) {
+  dropZone.addEventListener('click', e => {
+    if (e.target.tagName !== 'LABEL') fileInput.click();
+  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dz-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dz-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dz-over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      // Assign to input via DataTransfer
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(f);
+        fileInput.files = dt.files;
+      } catch(_) {}
+      handleFile(f);
+    }
+  });
+}
+
+/* ── Upload progress indicator (simulated) ── */
+const form = document.querySelector('form[enctype]');
+const bar  = document.getElementById('uploadBar');
+const prog = document.getElementById('uploadProgress');
+if (form && bar && prog) {
+  form.addEventListener('submit', () => {
+    if (fileInput.files.length > 0) {
+      prog.style.display = 'block';
+      let w = 0;
+      const iv = setInterval(() => {
+        w = Math.min(w + Math.random() * 18, 92);
+        bar.style.width = w + '%';
+        if (w >= 92) clearInterval(iv);
+      }, 120);
+    }
+  });
+}
+</script>
+{% endblock %}

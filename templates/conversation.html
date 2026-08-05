@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ partner.profile.first_name if partner.profile else partner.username }} — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+  <div class="chat-container">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <a href="{{ url_for('inbox') }}" class="back-btn"><i class="fas fa-arrow-left"></i></a>
+      <a href="{{ url_for('view_profile', username=partner.username) }}" class="chat-partner-info">
+        <div class="chat-avatar-wrap">
+          <img src="{{ url_for('static', filename=partner.get_photo_url()) }}"
+               class="chat-avatar" id="partnerAvatar" alt=""/>
+          {% if partner.is_online() %}<span class="online-dot" id="onlineDot"></span>{% endif %}
+        </div>
+        <div>
+          <strong>{{ partner.profile.first_name if partner.profile else partner.username }}</strong>
+          <span class="chat-status" id="chatStatus">
+            {{ 'Online now' if partner.is_online() else 'Last seen ' + (partner.last_seen.strftime('%d %b, %H:%M') if partner.last_seen else '') }}
+          </span>
+        </div>
+      </a>
+      <div style="display:flex; gap:6px; margin-left:auto;">
+        <a href="{{ url_for('view_profile', username=partner.username) }}" class="btn btn-sm btn-outline">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="btn btn-sm wink-send-btn" data-uid="{{ partner.id }}" title="Send a wink 😉">😉</button>
+        <a href="{{ url_for('report_user', user_id=partner.id) }}" class="btn btn-sm btn-outline"
+           title="Report this user" style="color:#e74c3c; border-color:#e74c3c;">
+          <i class="fas fa-flag"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="msg-wrap {% if msg.sender_id == current_user.id %}msg-mine{% else %}msg-theirs{% endif %}"
+               data-id="{{ msg.id }}">
+            <div class="msg-bubble" data-msgid="{{ msg.id }}">
+              <p>{{ msg.body }}</p>
+              <span class="msg-time">
+                {{ msg.sent_at.strftime('%d %b, %H:%M') }}
+                {% if msg.sender_id == current_user.id %}
+                  <span class="read-receipt" title="{{ 'Read' if msg.is_read else 'Sent' }}">
+                    {% if msg.is_read %}✓✓{% else %}✓{% endif %}
+                  </span>
+                {% endif %}
+              </span>
+              {% if msg.sender_id == current_user.id %}
+                <button class="msg-delete-btn" data-msgid="{{ msg.id }}" title="Delete message">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              {% endif %}
+              <!-- Reaction bar -->
+              <div class="reaction-bar">
+                {% for emoji in ['❤️','😂','😮','👍','🔥','😢'] %}
+                  <button class="react-btn" data-emoji="{{ emoji }}" data-msgid="{{ msg.id }}"
+                          title="{{ emoji }}">{{ emoji }}</button>
+                {% endfor %}
+              </div>
+              <div class="reaction-counts" id="rc-{{ msg.id }}"></div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="chat-empty" id="chatEmptyHint">
+          <p>Say hello to {{ partner.profile.first_name if partner.profile else partner.username }} 👋</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="typing-indicator" id="typingIndicator" style="display:none;">
+      <span></span><span></span><span></span>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-area">
+      <div class="chat-emoji-bar" id="chatEmojiBar">
+        {% for em in ['😀','😂','❤️','🙏','😍','🔥','💚','😭','🤣','👍','🥰','😘'] %}
+          <button class="quick-emoji-btn" data-emoji="{{ em }}">{{ em }}</button>
+        {% endfor %}
+        <button class="quick-emoji-toggle active" id="emojiToggle" title="Hide emoji bar">
+          <i class="fas fa-smile"></i>
+        </button>
+      </div>
+      <form id="chatForm" class="chat-form">
+        <textarea name="body" id="msgInput" class="chat-input"
+                  placeholder="Type a message… (Enter to send)"
+                  rows="1" maxlength="2000"></textarea>
+        <button type="submit" class="chat-send-btn" id="sendBtn">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+      <div class="chat-input-meta">
+        <span class="msg-char-count" id="msgCharCount">0 / 2000</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PARTNER_USERNAME = '{{ partner.username }}';
+const MY_ID            = {{ current_user.id }};
+const CSRF_TOKEN       = document.querySelector('meta[name="csrf-token"]').content;
+
+const chatEl   = document.getElementById('chatMessages');
+const msgInput = document.getElementById('msgInput');
+const chatForm = document.getElementById('chatForm');
+
+// Track last message ID for polling
+let lastId = 0;
+document.querySelectorAll('.msg-wrap[data-id]').forEach(el => {
+  lastId = Math.max(lastId, parseInt(el.dataset.id) || 0);
+});
+
+function scrollBottom(force) {
+  const nearBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 120;
+  if (force || nearBottom) chatEl.scrollTop = chatEl.scrollHeight;
+}
+scrollBottom(true);
+
+const EMOJIS = ['❤️','😂','😮','👍','🔥','😢'];
+
+function makeReactionBar(msgId) {
+  return EMOJIS.map(em =>
+    `<button class="react-btn" data-emoji="${em}" data-msgid="${msgId}" title="${em}">${em}</button>`
+  ).join('');
+}
+
+// Build read-receipt HTML
+function receiptHtml(mine, isRead) {
+  if (!mine) return '';
+  return `<span class="read-receipt ${isRead ? 'rr-read' : ''}" title="${isRead ? 'Read' : 'Sent'}">${isRead ? '✓✓' : '✓'}</span>`;
+}
+
+// Render a new message bubble
+function appendMsg(msg) {
+  document.getElementById('chatEmptyHint')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = `msg-wrap ${msg.mine ? 'msg-mine' : 'msg-theirs'}`;
+  wrap.dataset.id = msg.id;
+  wrap.innerHTML = `
+    <div class="msg-bubble" data-msgid="${msg.id}">
+      <p>${escapeHtml(msg.body)}</p>
+      <span class="msg-time">${msg.time}${receiptHtml(msg.mine, msg.is_read)}</span>
+      ${msg.mine ? `<button class="msg-delete-btn" data-msgid="${msg.id}" title="Delete message"><i class="fas fa-trash-alt"></i></button>` : ''}
+      <div class="reaction-bar">${makeReactionBar(msg.id)}</div>
+      <div class="reaction-counts" id="rc-${msg.id}"></div>
+    </div>`;
+  chatEl.appendChild(wrap);
+  scrollBottom(msg.mine);
+  loadReactions(msg.id);
+}
+
+// Update receipt tick on existing bubble (when partner reads our message)
+function updateReceipt(msgId, isRead) {
+  const wrap = document.querySelector(`.msg-mine[data-id="${msgId}"] .read-receipt`);
+  if (wrap) {
+    wrap.textContent = isRead ? '✓✓' : '✓';
+    wrap.title       = isRead ? 'Read' : 'Sent';
+    wrap.classList.toggle('rr-read', isRead);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;').replace(/'/g,'&#039;').replace(/\n/g,'<br>');
+}
+
+// Send message via AJAX
+chatForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const body = msgInput.value.trim();
+  if (!body) return;
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  const fd = new FormData();
+  fd.append('body', body);
+  fd.append('csrf_token', CSRF_TOKEN);
+  fetch(`/messages/${PARTNER_USERNAME}`, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(() => {
+      msgInput.value = '';
+      msgInput.style.height = 'auto';
+      updateCharCount();
+      pollMessages();   // show the sent message immediately
+    })
+    .catch(() => showToast('Failed to send. Check your connection.', '#e74c3c'))
+    .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i>'; });
+});
+
+// Poll for new messages and read-receipt updates every 3s
+function pollMessages() {
+  fetch(`/messages/${PARTNER_USERNAME}/poll?since=${lastId}`)
+    .then(r => r.json())
+    .then(data => {
+      // Update online status
+      const statusEl = document.getElementById('chatStatus');
+      if (data.partner_online !== undefined && statusEl) {
+        statusEl.textContent = data.partner_online ? 'Online now' : 'Last seen recently';
+        const dot = document.getElementById('onlineDot');
+        if (dot) dot.style.display = data.partner_online ? '' : 'none';
+      }
+      // Append new messages
+      data.messages.forEach(msg => {
+        if (!document.querySelector(`[data-id="${msg.id}"]`)) {
+          appendMsg(msg);
+          lastId = Math.max(lastId, msg.id);
+        }
+      });
+      // Update read receipts on our sent messages
+      if (data.read_up_to) {
+        document.querySelectorAll('.msg-mine[data-id]').forEach(el => {
+          if (parseInt(el.dataset.id) <= data.read_up_to) {
+            updateReceipt(el.dataset.id, true);
+          }
+        });
+      }
+    })
+    .catch(() => {});
+}
+setInterval(pollMessages, 3000);
+
+// Auto-resize textarea
+msgInput.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Enter to send, Shift+Enter for newline
+msgInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    chatForm.dispatchEvent(new Event('submit'));
+  }
+});
+
+// Wink button in chat header
+const winkBtn = document.querySelector('.wink-send-btn');
+if (winkBtn) {
+  winkBtn.dataset.winkHandled = '1';  // prevent global handler in main.js
+  winkBtn.addEventListener('click', function() {
+    fetch(`/wink/${this.dataset.uid}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { showToast(d.message || '😉 Wink sent!'); this.disabled = true; });
+  });
+}
+
+/* ── Typing Indicator ── */
+let typingTimer = null;
+let isTyping    = false;
+
+function sendTypingPing() {
+  fetch(`/api/typing/${PARTNER_USERNAME}`, { method: 'POST' }).catch(() => {});
+}
+
+msgInput.addEventListener('input', () => {
+  if (!isTyping) { isTyping = true; sendTypingPing(); }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => { isTyping = false; }, 2000);
+  // keep pinging every 2s while actively typing
+  clearTimeout(msgInput._pingTimer);
+  msgInput._pingTimer = setTimeout(function ping() {
+    if (isTyping) { sendTypingPing(); msgInput._pingTimer = setTimeout(ping, 2000); }
+  }, 2000);
+});
+
+const typingEl = document.getElementById('typingIndicator');
+
+function pollTyping() {
+  fetch(`/api/typing/${PARTNER_USERNAME}`)
+    .then(r => r.json())
+    .then(data => {
+      if (typingEl) typingEl.style.display = data.typing ? 'flex' : 'none';
+      if (data.typing) scrollBottom(false);
+    })
+    .catch(() => {});
+}
+setInterval(pollTyping, 2500);
+
+/* ── Delete single message ── */
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.msg-delete-btn');
+  if (!btn) return;
+  const msgId = btn.dataset.msgid;
+  if (!confirm('Delete this message?')) return;
+  fetch(`/message/${msgId}/delete`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'deleted') {
+        const wrap = document.querySelector(`.msg-wrap[data-id="${msgId}"]`);
+        if (wrap) {
+          wrap.style.transition = 'opacity .3s';
+          wrap.style.opacity    = '0';
+          setTimeout(() => wrap.remove(), 300);
+        }
+        showToast('Message deleted', '#636e72');
+      } else {
+        showToast(data.message || 'Cannot delete', '#e74c3c');
+      }
+    })
+    .catch(() => showToast('Error deleting message', '#e74c3c'));
+});
+
+/* ── Quick Emoji Picker ── */
+const emojiBar    = document.getElementById('chatEmojiBar');
+const emojiToggle = document.getElementById('emojiToggle');
+
+document.querySelectorAll('.quick-emoji-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pos   = msgInput.selectionStart;
+    const val   = msgInput.value;
+    const emoji = btn.dataset.emoji;
+    msgInput.value = val.slice(0, pos) + emoji + val.slice(pos);
+    msgInput.selectionStart = msgInput.selectionEnd = pos + emoji.length;
+    msgInput.focus();
+    updateCharCount();
+  });
+});
+
+if (emojiToggle) {
+  emojiToggle.addEventListener('click', () => {
+    const hidden = emojiBar.style.display === 'none';
+    emojiBar.style.display = hidden ? 'flex' : 'none';
+    emojiToggle.classList.toggle('active', hidden);
+    localStorage.setItem('nr_emoji_bar', hidden ? '1' : '0');
+  });
+  // Restore preference
+  if (localStorage.getItem('nr_emoji_bar') === '0') {
+    emojiBar.style.display = 'none';
+    emojiToggle.classList.remove('active');
+  }
+}
+
+/* ── Character Counter ── */
+const charCount = document.getElementById('msgCharCount');
+function updateCharCount() {
+  if (!charCount) return;
+  const len = msgInput.value.length;
+  charCount.textContent = `${len} / 2000`;
+  charCount.style.color = len > 1800 ? '#e74c3c' : len > 1500 ? '#f39c12' : '#b2bec3';
+}
+msgInput.addEventListener('input', updateCharCount);
+
+function loadReactions(msgId) {
+  fetch(`/api/reactions/${msgId}`).then(r=>r.json()).then(data=>{
+    const el = document.getElementById(`rc-${msgId}`);
+    if (!el) return;
+    el.innerHTML = Object.entries(data.counts).map(([e,c])=>
+      `<span class="rc-chip ${data.mine===e ? 'rc-mine' : ''}" data-emoji="${e}" data-msgid="${msgId}">${e} ${c}</span>`
+    ).join('');
+    el.querySelectorAll('.rc-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=> sendReaction(chip.dataset.msgid, chip.dataset.emoji));
+    });
+  }).catch(()=>{});
+}
+
+function sendReaction(msgId, emoji) {
+  fetch(`/react/${msgId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji })
+  }).then(r=>r.json()).then(()=> loadReactions(msgId));
+}
+
+// Load reactions for all existing messages
+document.querySelectorAll('.msg-wrap[data-id]').forEach(el => loadReactions(el.dataset.id));
+
+// Reaction button clicks (event delegation)
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.react-btn');
+  if (btn) sendReaction(btn.dataset.msgid, btn.dataset.emoji);
+});
+</script>
+{% endblock %}
+

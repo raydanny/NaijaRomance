@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Contact Us — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container info-page">
+  <div class="info-card" style="max-width:640px">
+    <h1><i class="fas fa-envelope"></i> Contact Us</h1>
+    <p class="info-updated">We typically respond within 24 hours.</p>
+
+    <div class="info-section">
+      <h2>Support Topics</h2>
+      <div class="contact-topics">
+        <a href="{{ url_for('report_user', user_id=1) if current_user.is_authenticated else url_for('login') }}"
+           class="contact-topic-card">
+          <i class="fas fa-flag"></i>
+          <strong>Report a User</strong>
+          <span>Use the "Report" button on any profile page for the fastest response.</span>
+        </a>
+        <div class="contact-topic-card">
+          <i class="fas fa-lock"></i>
+          <strong>Account Issues</strong>
+          <span>Password problems? Use <a href="{{ url_for('forgot_password') }}">Forgot Password</a> to reset via your security question.</span>
+        </div>
+        <div class="contact-topic-card">
+          <i class="fas fa-bug"></i>
+          <strong>Bug Reports</strong>
+          <span>Found a bug? Email us with a description of what happened and we'll fix it quickly.</span>
+        </div>
+        <div class="contact-topic-card">
+          <i class="fas fa-question-circle"></i>
+          <strong>General Enquiries</strong>
+          <span>Anything else — we're happy to help.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h2>Get in Touch</h2>
+      <div class="contact-email-box">
+        <i class="fas fa-envelope-open-text contact-email-icon"></i>
+        <div>
+          <p>Send your message to:</p>
+          <a href="mailto:support@naijaromance.com" class="contact-email-link">
+            support@naijaromance.com
+          </a>
+          <p class="text-muted" style="font-size:.85rem;margin-top:.4rem">
+            Include your username so we can look up your account quickly.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h2>Useful Links</h2>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <a href="{{ url_for('terms') }}"   class="btn btn-outline btn-sm"><i class="fas fa-file-contract"></i> Terms of Service</a>
+        <a href="{{ url_for('privacy') }}" class="btn btn-outline btn-sm"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('settings') }}" class="btn btn-outline btn-sm"><i class="fas fa-cog"></i> Account Settings</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

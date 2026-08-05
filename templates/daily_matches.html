@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Your Matches — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+
+  <div class="matches-hero">
+    <div class="matches-hero-icon">💚</div>
+    <h1>Your Daily Matches</h1>
+    <p>Hand-picked for you based on your state, interests, and relationship goals.</p>
+  </div>
+
+  {% if matches %}
+    <div class="matches-grid">
+      {% for user in matches %}
+        {% set score = match_scores.get(user.id, 0) %}
+        <div class="match-profile-card">
+
+          <!-- Compatibility Badge -->
+          <div class="compat-ring
+            {% if score >= 70 %}compat-high
+            {% elif score >= 40 %}compat-mid
+            {% else %}compat-low{% endif %}">
+            <span class="compat-pct">{{ score }}%</span>
+            <span class="compat-label">Match</span>
+          </div>
+
+          <div class="match-photo-wrap">
+            <a href="{{ url_for('view_profile', username=user.username) }}">
+              <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                   class="match-photo" alt="{{ user.username }}"/>
+            </a>
+            {% if user.is_online() %}<span class="online-dot match-online-dot"></span>{% endif %}
+          </div>
+
+          <div class="match-info">
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="match-name">
+              {{ user.profile.first_name if user.profile else user.username }}
+              {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+            </a>
+            <p class="match-loc">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ user.profile.state if user.profile else '' }}
+            </p>
+            {% if user.profile and user.profile.relationship_goal %}
+              <span class="goal-tag">{{ user.profile.relationship_goal }}</span>
+            {% endif %}
+            {% if user.profile and user.profile.interests_list() %}
+              <div class="match-interests">
+                {% for i in user.profile.interests_list()[:3] %}
+                  <span class="interest-tag-sm">{{ i }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="match-actions">
+            <button class="btn btn-sm match-like-btn {% if user.id in liked_ids %}liked{% endif %}"
+                    data-uid="{{ user.id }}" title="Like">
+              <i class="fas fa-heart"></i>
+            </button>
+            <button class="btn btn-sm match-wink-btn" data-uid="{{ user.id }}" title="Wink 😉">
+              <i>😉</i>
+            </button>
+            <a href="{{ url_for('conversation', username=user.username) }}"
+               class="btn btn-primary btn-sm" title="Message">
+              <i class="fas fa-comment-dots"></i>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="matches-footer">
+      <p>Matches refresh daily. <a href="{{ url_for('browse') }}">Browse all members →</a></p>
+    </div>
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h3>No matches found yet</h3>
+      <p>Complete your profile with state, interests and relationship goal so we can find your best matches.</p>
+      <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Complete Profile</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.match-like-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const uid = this.dataset.uid;
+    fetch(`/like/${uid}`, {method:'POST'})
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'liked')   { this.classList.add('liked');   if(data.mutual) showToast('💚 Mutual match!'); else showToast('❤️ Liked!'); }
+        if (data.status === 'unliked') { this.classList.remove('liked'); }
+      });
+  });
+});
+
+document.querySelectorAll('.match-wink-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const uid = this.dataset.uid;
+    fetch(`/wink/${uid}`, {method:'POST'})
+      .then(r => r.json())
+      .then(data => {
+        showToast(data.message || '😉 Wink sent!');
+        this.disabled = true;
+        this.style.opacity = '.5';
+      });
+  });
+});
+</script>
+{% endblock %}

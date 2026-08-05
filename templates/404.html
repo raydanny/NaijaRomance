@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>404 — Page Not Found · NaijaRomance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon_32.png') }}"/>
+</head>
+<body>
+<div class="error-page">
+  <div class="error-content">
+    <a href="{{ url_for('index') }}" class="error-brand">💚 NaijaRomance</a>
+    <div class="error-emoji">💔</div>
+    <h1 class="error-code">404</h1>
+    <h2>This page ran away</h2>
+    <p>The profile or page you're looking for doesn't exist, was deleted, or may have blocked you.</p>
+    <div class="error-actions">
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('browse') }}" class="btn btn-primary btn-lg">
+          <i class="fas fa-search"></i> Browse Members
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline btn-lg">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+      {% else %}
+        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+          <i class="fas fa-home"></i> Go Home
+        </a>
+        <a href="{{ url_for('register') }}" class="btn btn-outline btn-lg">
+          <i class="fas fa-heart"></i> Join Free
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

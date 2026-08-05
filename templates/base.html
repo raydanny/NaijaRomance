@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}NaijaRomance{% endblock %} — Find Love Across Nigeria</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon_32.png') }}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon_16.png') }}"/>
+  <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}"/>
+  <meta name="csrf-token" content="{{ csrf_token() }}"/>
+  {% block head %}{% endblock %}
+</head>
+<body data-authed="{{ 'true' if current_user.is_authenticated else 'false' }}">
+
+<!-- ── Navbar ───────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="nav-container">
+
+    <a href="{{ url_for('index') }}" class="nav-brand">
+      <span class="brand-icon">💚</span> NaijaRomance
+    </a>
+
+    {% if current_user.is_authenticated %}
+    <!-- Search bar (desktop) -->
+    <form action="{{ url_for('search') }}" method="GET" class="nav-search-form">
+      <div class="nav-search-wrap">
+        <i class="fas fa-search nav-search-icon"></i>
+        <input type="text" name="q" class="nav-search-input"
+               value="{{ request.args.get('q','') }}"
+               placeholder="Search members, states, interests…"/>
+      </div>
+    </form>
+    {% endif %}
+
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <ul class="nav-links" id="navLinks">
+      {% if current_user.is_authenticated %}
+        <li><a href="{{ url_for('browse') }}"
+               class="nav-link {% if request.endpoint == 'browse' %}active{% endif %}">
+          <i class="fas fa-search"></i> Browse
+        </a></li>
+        <li><a href="{{ url_for('daily_matches') }}"
+               class="nav-link {% if request.endpoint == 'daily_matches' %}active{% endif %}">
+          <i class="fas fa-star"></i> Matches
+        </a></li>
+        <li><a href="{{ url_for('online_members') }}"
+               class="nav-link {% if request.endpoint == 'online_members' %}active{% endif %}">
+          <span class="online-pulse-dot-sm"></span> Online
+          <span class="online-count-badge" id="onlineNavCount" style="display:none"></span>
+        </a></li>
+        <li><a href="{{ url_for('my_likes') }}"
+               class="nav-link {% if request.endpoint == 'my_likes' %}active{% endif %}">
+          <i class="fas fa-heart"></i> Likes
+        </a></li>
+        <li>
+          <a href="{{ url_for('inbox') }}"
+             class="nav-link {% if request.endpoint in ['inbox','conversation'] %}active{% endif %}">
+            <i class="fas fa-envelope"></i> Messages
+            {% if unread_count > 0 %}<span class="badge nav-msg-badge">{{ unread_count }}</span>{% endif %}
+          </a>
+        </li>
+
+        <!-- Notification Bell -->
+        <li class="nav-dropdown" id="notifDropWrap">
+          <button class="nav-link notif-bell-btn" id="notifBell" aria-label="Notifications">
+            <i class="fas fa-bell"></i>
+            {% if notif_count > 0 %}
+              <span class="badge notif-badge" id="notifBadge">{{ notif_count }}</span>
+            {% endif %}
+          </button>
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-drop-head">
+              <strong>Notifications</strong>
+              <a href="{{ url_for('notifications') }}" class="notif-see-all">See all</a>
+            </div>
+            <div class="notif-drop-body" id="notifDropBody">
+              <div class="notif-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+            </div>
+          </div>
+        </li>
+
+        <!-- Profile Dropdown -->
+        <li class="nav-dropdown">
+          <button class="nav-link dropdown-toggle" id="profileDrop">
+            <img src="{{ url_for('static', filename=current_user.get_photo_url()) }}"
+                 class="nav-avatar" alt=""/>
+            {{ current_user.profile.first_name if current_user.profile else current_user.username }}
+            <i class="fas fa-chevron-down" style="font-size:.7rem"></i>
+          </button>
+          <ul class="dropdown-menu" id="profileMenu">
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="{{ url_for('view_profile', username=current_user.username) }}"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="{{ url_for('edit_profile') }}"><i class="fas fa-edit"></i> Edit Profile</a></li>
+            <li><a href="{{ url_for('profile_viewers') }}"><i class="fas fa-eye"></i> Who Viewed Me</a></li>
+            <li><a href="{{ url_for('my_winks') }}"><i>😉</i> My Winks {% if wink_count > 0 %}<span class="badge nav-wink-badge" style="margin-left:auto">{{ wink_count }}</span>{% else %}<span class="badge nav-wink-badge" style="margin-left:auto;display:none">0</span>{% endif %}</a></li>
+            <li><a href="{{ url_for('search') }}"><i class="fas fa-search"></i> Search</a></li>
+            <li><a href="{{ url_for('blocked_users') }}"><i class="fas fa-ban"></i> Blocked Users</a></li>
+            <li><a href="{{ url_for('settings') }}"><i class="fas fa-cog"></i> Settings</a></li>
+            {% if current_user.username in ['admin','naijaadmin'] %}
+              <li class="divider"></li>
+              <li><a href="{{ url_for('admin_dashboard') }}" style="color:#e67e22">
+                <i class="fas fa-shield-alt"></i> Admin Panel
+                {% if pending_reports > 0 %}
+                  <span class="badge" style="margin-left:auto;background:#e67e22">{{ pending_reports }}</span>
+                {% endif %}
+              </a></li>
+            {% endif %}
+            <li class="divider"></li>
+            <li><a href="{{ url_for('logout') }}" class="text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+          </ul>
+        </li>
+
+      {% else %}
+        <li><a href="{{ url_for('login') }}" class="nav-link">Login</a></li>
+        <li><a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Join Free</a></li>
+      {% endif %}
+    </ul>
+  </div>
+</nav>
+
+<!-- ── Flash Messages ──────────────────────────────────────────────────── -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}">
+        <span>{{ msg }}</span>
+        <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<!-- ── Main Content ────────────────────────────────────────────────────── -->
+<main class="main-content" id="mainContent">{% block content %}{% endblock %}</main>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-brand">
+      <span class="brand-icon">💚</span> <strong>NaijaRomance</strong>
+      <p>Finding love across all 36 states of Nigeria. 100% Free.</p>
+    </div>
+    <div class="footer-links">
+      <h4>Quick Links</h4>
+      <a href="{{ url_for('index') }}">Home</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('browse') }}">Browse Members</a>
+        <a href="{{ url_for('daily_matches') }}">My Matches</a>
+        <a href="{{ url_for('my_likes') }}">My Likes</a>
+        <a href="{{ url_for('profile_viewers') }}">Who Viewed Me</a>
+        <a href="{{ url_for('blocked_users') }}">Blocked Users</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+      {% else %}
+        <a href="{{ url_for('register') }}">Join Free</a>
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('forgot_password') }}">Forgot Password</a>
+      {% endif %}
+    </div>
+    <div class="footer-states">
+      <h4>Top States</h4>
+      <p>Lagos · Abuja · Kano · Rivers · Oyo · Delta · Enugu · Imo</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; {{ now.year }} NaijaRomance · Made with 💚 for Nigerians · All 36 States · 100% Free</p>
+    <p class="footer-legal">
+      <a href="{{ url_for('terms') }}">Terms of Service</a> ·
+      <a href="{{ url_for('privacy') }}">Privacy Policy</a> ·
+      <a href="{{ url_for('contact') }}">Contact Us</a>
+    </p>
+    <p class="footer-powered">
+      Powered by
+      <a href="https://t.me/getitfreeadmin" target="_blank" rel="noopener noreferrer" class="powered-link">
+        <i class="fab fa-telegram"></i> @getitfreeadmin
+      </a>
+    </p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+
+<!-- ── Back to Top ──────────────────────────────────────────────── -->
+<button class="back-to-top" id="backToTop" title="Back to top" aria-label="Back to top">
+  <i class="fas fa-chevron-up"></i>
+</button>
+
+<!-- ── Mobile Bottom Nav ─────────────────────────────────────── -->
+{% if current_user.is_authenticated %}
+<nav class="bottom-nav">
+  <a href="{{ url_for('browse') }}"         class="bnav-item {% if request.endpoint=='browse' %}bnav-active{% endif %}">
+    <i class="fas fa-search"></i><span>Browse</span>
+  </a>
+  <a href="{{ url_for('daily_matches') }}"  class="bnav-item {% if request.endpoint=='daily_matches' %}bnav-active{% endif %}">
+    <i class="fas fa-star"></i><span>Matches</span>
+  </a>
+  <a href="{{ url_for('online_members') }}" class="bnav-item {% if request.endpoint=='online_members' %}bnav-active{% endif %}">
+    <span class="online-pulse-dot-sm" style="margin:0 auto 2px"></span><span>Online</span>
+  </a>
+  <a href="{{ url_for('inbox') }}"          class="bnav-item {% if request.endpoint in ['inbox','conversation'] %}bnav-active{% endif %}">
+    <i class="fas fa-envelope"></i>
+    {% if unread_count > 0 %}<span class="bnav-badge">{{ unread_count }}</span>{% endif %}
+    <span>Chat</span>
+  </a>
+  <a href="{{ url_for('dashboard') }}"      class="bnav-item {% if request.endpoint=='dashboard' %}bnav-active{% endif %}">
+    <img src="{{ url_for('static', filename=current_user.get_photo_url()) }}"
+         class="bnav-avatar" alt=""/>
+    <span>Me</span>
+  </a>
+</nav>
+{% endif %}
+</body>
+</html>

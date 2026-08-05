@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Likes — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+  <!-- Mutual Matches -->
+  {% if mutual_users %}
+    <div class="likes-section">
+      <h2 class="likes-title"><i class="fas fa-heart text-green"></i> Mutual Matches ({{ mutual_users|length }})</h2>
+      <p class="likes-sub">You both liked each other — start chatting!</p>
+      <div class="members-grid">
+        {% for user in mutual_users %}
+          <div class="member-card match-card">
+            <div class="match-badge">💚 Match!</div>
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=user.username) }}">
+                <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                     class="member-photo" alt="{{ user.username }}"/>
+              </a>
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+                {{ user.profile.first_name if user.profile else user.username }}
+                {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location"><i class="fas fa-map-marker-alt"></i> {{ user.profile.state if user.profile else '' }}</p>
+            </div>
+            <div class="member-actions">
+              <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-comment-dots"></i> Message
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="likes-tabs">
+    <button class="tab-btn active" data-tab="liked-me">Liked Me ({{ liked_me|length }})</button>
+    <button class="tab-btn" data-tab="i-liked">I Liked ({{ i_liked|length }})</button>
+  </div>
+
+  <!-- Liked Me -->
+  <div class="tab-content active" id="liked-me">
+    {% if liked_me %}
+      <div class="members-grid">
+        {% for user in liked_me %}
+          <div class="member-card">
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=user.username) }}">
+                <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                     class="member-photo" alt="{{ user.username }}"/>
+              </a>
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+                {{ user.profile.first_name if user.profile else user.username }}
+                {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location"><i class="fas fa-map-marker-alt"></i> {{ user.profile.state if user.profile else '' }}</p>
+            </div>
+            <div class="member-actions">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+              <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary"><i class="fas fa-comment"></i></a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💔</div>
+        <h3>No one has liked you yet</h3>
+        <p>Complete your profile and browse members to attract likes!</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- I Liked -->
+  <div class="tab-content" id="i-liked" style="display:none">
+    {% if i_liked %}
+      <div class="members-grid">
+        {% for user in i_liked %}
+          <div class="member-card">
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=user.username) }}">
+                <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                     class="member-photo" alt="{{ user.username }}"/>
+              </a>
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+                {{ user.profile.first_name if user.profile else user.username }}
+                {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location"><i class="fas fa-map-marker-alt"></i> {{ user.profile.state if user.profile else '' }}</p>
+            </div>
+            <div class="member-actions">
+              <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+              <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary"><i class="fas fa-comment"></i></a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>You haven't liked anyone yet</h3>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse Members</a>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    this.classList.add('active');
+    document.getElementById(this.dataset.tab).style.display = 'block';
+  });
+});
+</script>
+{% endblock %}

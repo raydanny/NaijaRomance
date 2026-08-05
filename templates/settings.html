@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Settings — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:640px;margin:2rem auto;">
+  <h2 style="margin-bottom:1.5rem"><i class="fas fa-cog"></i> Account Settings</h2>
+
+  <!-- ── Privacy Settings ──────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header"><h3><i class="fas fa-user-shield"></i> Privacy</h3></div>
+    <form method="POST" action="{{ url_for('settings') }}" style="padding:1.5rem">
+      <input type="hidden" name="action" value="privacy"/>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="toggle-row">
+        <div>
+          <strong>Hide profile from Browse &amp; Search</strong>
+          <p class="text-muted" style="font-size:.85rem;margin:.25rem 0 0">
+            Only people you message directly can see your profile.
+          </p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="is_hidden" id="isHidden"
+                 {% if current_user.is_hidden %}checked{% endif %}/>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div style="margin-top:1rem">
+        <button type="submit" class="btn btn-primary btn-sm">Save Privacy</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Security Question ─────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header">
+      <h3><i class="fas fa-shield-alt"></i> Security Question</h3>
+    </div>
+    <form method="POST" action="{{ url_for('settings') }}" class="edit-form" style="padding:1.5rem">
+      <input type="hidden" name="action" value="security_question"/>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      {% if current_user.security_question %}
+        <div class="form-group">
+          <label>Current Question</label>
+          <p class="security-question-text">{{ current_user.security_question }}</p>
+        </div>
+      {% else %}
+        <p class="text-muted" style="margin-bottom:1rem;font-size:.88rem">
+          <i class="fas fa-info-circle"></i>
+          No security question set. Add one to enable password reset.
+        </p>
+      {% endif %}
+      <div class="form-group">
+        <label for="sq">Security Question</label>
+        <select name="security_question" id="sq" class="form-control">
+          <option value="">Choose a question…</option>
+          {% for q in [
+            "What is the name of your primary school?",
+            "What is your mother's maiden name?",
+            "What was the name of your first pet?",
+            "What city were you born in?",
+            "What is the name of your childhood best friend?",
+            "What is your oldest sibling's middle name?",
+            "What street did you grow up on?",
+            "What was the make of your first car?",
+            "What is your maternal grandmother's first name?"
+          ] %}
+            <option value="{{ q }}"
+              {% if current_user.security_question == q %}selected{% endif %}>{{ q }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="sa">Your Answer</label>
+        <input type="text" id="sa" name="security_answer" class="form-control"
+               placeholder="Keep it memorable" autocomplete="off"/>
+        <small class="form-hint">Answers are saved in lowercase and are not case-sensitive.</small>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" name="password" class="form-control" required/>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Security Question</button>
+    </form>
+  </div>
+
+  <!-- ── Change Password ───────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header"><h3><i class="fas fa-lock"></i> Change Password</h3></div>
+    <form method="POST" action="{{ url_for('settings') }}" class="edit-form" style="padding:1.5rem">
+      <input type="hidden" name="action" value="change_password"/>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="form-group">
+        <label>Current Password</label>
+        <div class="input-eye">
+          <input type="password" name="old_password" id="oldPw" class="form-control" required/>
+          <button type="button" class="eye-btn" onclick="togglePw('oldPw')"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <div class="input-eye">
+          <input type="password" name="new_password" id="newPw" class="form-control" required minlength="6"/>
+          <button type="button" class="eye-btn" onclick="togglePw('newPw')"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" name="new_password2" class="form-control" required minlength="6"/>
+      </div>
+      <button type="submit" class="btn btn-primary">Update Password</button>
+    </form>
+  </div>
+
+  <!-- ── Change Email ──────────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header"><h3><i class="fas fa-envelope"></i> Change Email</h3></div>
+    <form method="POST" action="{{ url_for('settings') }}" class="edit-form" style="padding:1.5rem">
+      <input type="hidden" name="action" value="change_email"/>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="form-group">
+        <label>New Email Address</label>
+        <input type="email" name="new_email" class="form-control"
+               value="{{ current_user.email }}" required/>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" name="password" class="form-control" required/>
+      </div>
+      <button type="submit" class="btn btn-primary">Update Email</button>
+    </form>
+  </div>
+
+  <!-- ── Blocked Users ─────────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header"><h3><i class="fas fa-ban"></i> Blocked Users</h3></div>
+    <div style="padding:1.2rem 1.5rem">
+      <p class="text-muted" style="font-size:.88rem">Manage the members you have blocked.</p>
+      <a href="{{ url_for('blocked_users') }}" class="btn btn-outline btn-sm">
+        <i class="fas fa-list"></i> View Blocked Users
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Delete Account ────────────────────────────────────────────── -->
+  <div class="card card-danger">
+    <div class="card-header"><h3><i class="fas fa-trash"></i> Delete Account</h3></div>
+    <div style="padding:1.5rem">
+      <p class="text-muted">This will permanently delete your account, profile, photos and messages. This cannot be undone.</p>
+      <form method="POST" action="{{ url_for('settings') }}"
+            onsubmit="return confirm('Are you sure? This will permanently delete your account and all your data!')">
+        <input type="hidden" name="action" value="delete_account"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+          <label>Enter Password to Confirm</label>
+          <input type="password" name="password" class="form-control" required/>
+        </div>
+        <button type="submit" class="btn btn-danger">Delete My Account</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(id) {
+  const el = document.getElementById(id);
+  if (el) el.type = el.type === 'password' ? 'text' : 'password';
+}
+</script>
+{% endblock %}

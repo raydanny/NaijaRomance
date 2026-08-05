@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Who Viewed Me — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+  <div class="page-heading">
+    <h2><i class="fas fa-eye text-green"></i> Who Viewed My Profile</h2>
+    <p class="text-muted">People who visited your profile recently (last 50 unique viewers)</p>
+  </div>
+
+  {% if viewers %}
+    <div class="members-grid">
+      {% for user, last_view in viewers %}
+        <div class="member-card">
+          <div class="member-photo-wrap">
+            <a href="{{ url_for('view_profile', username=user.username) }}">
+              <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+                   class="member-photo" alt="{{ user.username }}"/>
+            </a>
+            {% if user.is_online() %}<span class="online-dot"></span>{% endif %}
+          </div>
+          <div class="member-info">
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="member-name">
+              {{ user.profile.first_name if user.profile else user.username }}
+              {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+            </a>
+            <p class="member-location">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ user.profile.state if user.profile else '' }}
+            </p>
+            <p class="view-time"><i class="fas fa-clock"></i> {{ last_view.strftime('%d %b, %H:%M') }}</p>
+          </div>
+          <div class="member-actions">
+            <a href="{{ url_for('view_profile', username=user.username) }}" class="btn btn-sm btn-outline">View</a>
+            <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-sm btn-primary">
+              <i class="fas fa-comment"></i>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">👀</div>
+      <h3>Nobody has viewed your profile yet</h3>
+      <p>Complete your profile and add a photo to attract visitors!</p>
+      <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Complete Profile</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

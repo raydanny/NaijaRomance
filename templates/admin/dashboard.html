@@ -1,0 +1,177 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<!-- Stats Row -->
+<div class="admin-stats-grid">
+  <div class="admin-stat-card" style="border-top:4px solid #27ae60">
+    <div class="ast-icon" style="color:#27ae60"><i class="fas fa-users"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.total_users }}</span>
+      <span class="ast-label">Total Members</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #3498db">
+    <div class="ast-icon" style="color:#3498db"><i class="fas fa-user-plus"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.new_today }}</span>
+      <span class="ast-label">Joined Today</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #9b59b6">
+    <div class="ast-icon" style="color:#9b59b6"><i class="fas fa-user-clock"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.new_week }}</span>
+      <span class="ast-label">New This Week</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #1abc9c">
+    <div class="ast-icon" style="color:#1abc9c"><i class="fas fa-circle"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.online_now }}</span>
+      <span class="ast-label">Online Now</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #e74c3c">
+    <div class="ast-icon" style="color:#e74c3c"><i class="fas fa-heart"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.total_likes }}</span>
+      <span class="ast-label">Total Likes</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #f39c12">
+    <div class="ast-icon" style="color:#f39c12"><i class="fas fa-envelope"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.total_messages }}</span>
+      <span class="ast-label">Total Messages</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #e67e22">
+    <div class="ast-icon" style="color:#e67e22"><i class="fas fa-hand-spock"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.total_winks }}</span>
+      <span class="ast-label">Total Winks</span>
+    </div>
+  </div>
+  <div class="admin-stat-card" style="border-top:4px solid #8e44ad">
+    <div class="ast-icon" style="color:#8e44ad"><i class="fas fa-eye"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.total_views }}</span>
+      <span class="ast-label">Profile Views</span>
+    </div>
+  </div>
+  <div class="admin-stat-card {% if stats.pending_reports > 0 %}ast-alert{% endif %}"
+       style="border-top:4px solid #c0392b">
+    <div class="ast-icon" style="color:#c0392b"><i class="fas fa-flag"></i></div>
+    <div class="ast-data">
+      <span class="ast-num">{{ stats.pending_reports }}</span>
+      <span class="ast-label">Pending Reports</span>
+    </div>
+  </div>
+</div>
+
+<div class="admin-two-col">
+  <!-- Recent Members -->
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h3>Recent Members</h3>
+      <a href="{{ url_for('admin_users') }}" class="admin-link">View all</a>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr><th>User</th><th>State</th><th>Joined</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for u in recent_users %}
+          <tr>
+            <td>
+              <div class="admin-user-cell">
+                <img src="{{ url_for('static', filename=u.get_photo_url()) }}"
+                     class="admin-user-thumb"/>
+                <div>
+                  <strong>{{ u.profile.first_name if u.profile else u.username }}</strong>
+                  <small>@{{ u.username }}</small>
+                </div>
+              </div>
+            </td>
+            <td>{{ u.profile.state if u.profile else '—' }}</td>
+            <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+            <td>
+              <span class="status-dot {% if u.is_active_acc %}dot-active{% else %}dot-inactive{% endif %}">
+                {{ 'Active' if u.is_active_acc else 'Banned' }}
+              </span>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Top States -->
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h3>Members by State</h3>
+    </div>
+    <div class="state-bars">
+      {% set max_count = state_counts[0][1] if state_counts else 1 %}
+      {% for state, count in state_counts %}
+        <div class="state-bar-row">
+          <span class="state-name">{{ state or 'Unknown' }}</span>
+          <div class="state-bar-bg">
+            <div class="state-bar-fill" style="width:{{ (count / max_count * 100)|int }}%"></div>
+          </div>
+          <span class="state-count">{{ count }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Growth Chart -->
+<div class="admin-card" style="margin-top:1.5rem">
+  <div class="admin-card-head">
+    <h3><i class="fas fa-chart-line" style="color:var(--green)"></i> New Members — Last 30 Days</h3>
+  </div>
+  <div class="admin-chart-wrap" style="padding:1rem 1.5rem 1.5rem">
+    <canvas id="growthChart"></canvas>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+fetch('/api/admin/growth')
+  .then(r => r.json())
+  .then(data => {
+    const ctx = document.getElementById('growthChart');
+    if (!ctx || !data.length) return;
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels:   data.map(d => d.date.slice(5)),
+        datasets: [{
+          label:           'New Members',
+          data:            data.map(d => d.count),
+          backgroundColor: 'rgba(0,135,81,.55)',
+          borderColor:     'rgba(0,135,81,1)',
+          borderWidth:     1.5,
+          borderRadius:    4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } }
+        }
+      }
+    });
+  })
+  .catch(() => {});
+</script>
+{% endblock %}

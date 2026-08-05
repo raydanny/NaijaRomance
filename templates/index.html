@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}NaijaRomance — Free Nigerian Dating Site{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ──────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-flag">🇳🇬</div>
+    <h1 class="hero-title">Find Your <span class="text-green-bright">Naija Love</span></h1>
+    <p class="hero-sub">
+      Nigeria's #1 free dating site connecting hearts across all 36 states.<br>
+      No subscriptions. No hidden fees. Just genuine love.
+    </p>
+
+    <!-- Live Stats Row -->
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num" id="statMembers">{{ stats.members }}</span>
+        <span class="stat-label">Members</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="statOnline">0</span>
+        <span class="stat-label">Online Now</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="statLikes">0</span>
+        <span class="stat-label">Likes Sent</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">100%</span>
+        <span class="stat-label">Free</span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <a href="{{ url_for('register') }}" class="btn btn-white btn-lg">
+        <i class="fas fa-heart"></i> Join Free Today
+      </a>
+      <a href="{{ url_for('login') }}" class="btn btn-outline-white btn-lg">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </a>
+    </div>
+  </div>
+
+  <!-- Floating state pills (decorative) -->
+  <div class="hero-state-pills" aria-hidden="true">
+    {% for s in ['Lagos','Kano','Abuja','Rivers','Oyo','Delta','Enugu','Imo','Edo','Kaduna'] %}
+      <span class="hero-pill">{{ s }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ── How It Works ────────────────────────────────────────────── -->
+<section class="section how-it-works">
+  <div class="container">
+    <h2 class="section-title">How NaijaRomance Works</h2>
+    <p class="section-sub">Simple, free, and built for Nigerians</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">📝</div>
+        <h3>1. Create Profile</h3>
+        <p>Sign up in 60 seconds. Tell us your state, interests and what you're looking for.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">🔍</div>
+        <h3>2. Browse & Match</h3>
+        <p>Filter by state, age, gender and relationship goal. Get daily smart matches.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">😉</div>
+        <h3>3. Wink or Like</h3>
+        <p>Break the ice with a free wink or like their profile. Mutual likes become matches.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">💬</div>
+        <h3>4. Chat Freely</h3>
+        <p>Send unlimited messages to anyone. No coins, no credits — completely free forever.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ────────────────────────────────────────────────── -->
+<section class="section features bg-light">
+  <div class="container">
+    <h2 class="section-title">Why Choose NaijaRomance?</h2>
+    <div class="features-grid">
+      <div class="feature-item">
+        <i class="fas fa-map-marker-alt feature-icon"></i>
+        <h4>All 36 States</h4>
+        <p>Find singles in Lagos, Kano, Enugu, or any state — your love is waiting.</p>
+      </div>
+      <div class="feature-item">
+        <i class="fas fa-brain feature-icon"></i>
+        <h4>Smart Matching</h4>
+        <p>Our algorithm scores compatibility by state, religion, ethnicity and shared interests.</p>
+      </div>
+      <div class="feature-item">
+        <i class="fas fa-lock feature-icon"></i>
+        <h4>Safe & Private</h4>
+        <p>Block, report and privacy controls keep our community safe and respectful.</p>
+      </div>
+      <div class="feature-item">
+        <i class="fas fa-mobile-alt feature-icon"></i>
+        <h4>Mobile Friendly</h4>
+        <p>Works perfectly on all Nigerian phones — no app download needed.</p>
+      </div>
+      <div class="feature-item">
+        <i class="fas fa-infinity feature-icon"></i>
+        <h4>Unlimited Messaging</h4>
+        <p>Chat as much as you want with no daily limits or paid credits.</p>
+      </div>
+      <div class="feature-item">
+        <i class="fas fa-gift feature-icon"></i>
+        <h4>Always Free</h4>
+        <p>Every single feature — matches, winks, messages, notifications — 100% free.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Popular States ──────────────────────────────────────────── -->
+<section class="section states-section">
+  <div class="container">
+    <h2 class="section-title">Browse by State</h2>
+    <p class="section-sub">Members active across all 36 states of Nigeria</p>
+    <div class="states-grid">
+      {% for state in ['Lagos','FCT - Abuja','Rivers','Kano','Oyo','Delta','Enugu','Imo',
+                       'Edo','Kaduna','Anambra','Cross River','Akwa Ibom','Kwara','Osun','Ogun'] %}
+        <a href="{{ url_for('register') }}" class="state-card">
+          <span class="state-card-name">{{ state }}</span>
+          <span class="state-card-arrow"><i class="fas fa-arrow-right"></i></span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ─────────────────────────────────────────────────────── -->
+<section class="section cta-section">
+  <div class="container text-center">
+    <h2>Your person is already on NaijaRomance</h2>
+    <p>Join thousands of Nigerians finding love right now</p>
+    <a href="{{ url_for('register') }}" class="btn btn-white btn-lg">
+      <i class="fas fa-heart"></i> Create Free Account
+    </a>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Animate stat counters */
+function animateCount(el, target, duration) {
+  let start = 0, step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = Math.floor(start).toLocaleString();
+    if (start >= target) clearInterval(timer);
+  }, 16);
+}
+
+/* Fetch live stats */
+fetch('/api/site-stats').then(r=>r.json()).then(data=>{
+  const mEl = document.getElementById('statMembers');
+  const oEl = document.getElementById('statOnline');
+  const lEl = document.getElementById('statLikes');
+  if (mEl) animateCount(mEl, data.members,  1200);
+  if (oEl) animateCount(oEl, data.online,    900);
+  if (lEl) animateCount(lEl, data.likes,    1500);
+}).catch(()=>{
+  const oEl = document.getElementById('statOnline');
+  if (oEl) oEl.textContent = '—';
+});
+
+/* Hero pill float animation stagger */
+document.querySelectorAll('.hero-pill').forEach((p, i) => {
+  p.style.animationDelay = (i * 0.4) + 's';
+});
+</script>
+{% endblock %}

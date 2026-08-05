@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Winks — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="margin:2rem auto;">
+
+  <div class="page-heading">
+    <h2><span class="wink-emoji">😉</span> My Winks</h2>
+    <p class="text-muted">A wink is a free icebreaker — no message needed!</p>
+  </div>
+
+  <div class="likes-tabs">
+    <button class="tab-btn active" data-tab="winks-recv">Received ({{ received|length }})</button>
+    <button class="tab-btn" data-tab="winks-sent">Sent ({{ sent|length }})</button>
+  </div>
+
+  <!-- Received Winks -->
+  <div class="tab-content active" id="winks-recv">
+    {% if received %}
+      <div class="members-grid">
+        {% for w in received %}
+          <div class="member-card {% if not w.is_seen %}card-new{% endif %}">
+            {% if not w.is_seen %}<div class="new-badge">New</div>{% endif %}
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=w.sender.username) }}">
+                <img src="{{ url_for('static', filename=w.sender.get_photo_url()) }}"
+                     class="member-photo" alt="{{ w.sender.username }}"/>
+              </a>
+              {% if w.sender.is_online() %}<span class="online-dot"></span>{% endif %}
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=w.sender.username) }}" class="member-name">
+                {{ w.sender.profile.first_name if w.sender.profile else w.sender.username }}
+                {% if w.sender.profile and w.sender.profile.age() %}, {{ w.sender.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ w.sender.profile.state if w.sender.profile else '' }}
+              </p>
+              <p class="wink-time"><i class="fas fa-clock"></i> {{ w.created_at.strftime('%d %b, %H:%M') }}</p>
+            </div>
+            <div class="member-actions">
+              <button class="btn btn-sm btn-wink wink-back-btn"
+                      data-uid="{{ w.sender.id }}"
+                      data-name="{{ w.sender.profile.first_name if w.sender.profile else w.sender.username }}"
+                      title="Wink back">
+                😉 Wink Back
+              </button>
+              <a href="{{ url_for('conversation', username=w.sender.username) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-comment-dots"></i>
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">😴</div>
+        <h3>No winks received yet</h3>
+        <p>Complete your profile and browse members — winks will come!</p>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse Members</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Sent Winks -->
+  <div class="tab-content" id="winks-sent" style="display:none">
+    {% if sent %}
+      <div class="members-grid">
+        {% for w in sent %}
+          <div class="member-card">
+            <div class="member-photo-wrap">
+              <a href="{{ url_for('view_profile', username=w.receiver.username) }}">
+                <img src="{{ url_for('static', filename=w.receiver.get_photo_url()) }}"
+                     class="member-photo" alt="{{ w.receiver.username }}"/>
+              </a>
+              {% if w.receiver.is_online() %}<span class="online-dot"></span>{% endif %}
+            </div>
+            <div class="member-info">
+              <a href="{{ url_for('view_profile', username=w.receiver.username) }}" class="member-name">
+                {{ w.receiver.profile.first_name if w.receiver.profile else w.receiver.username }}
+                {% if w.receiver.profile and w.receiver.profile.age() %}, {{ w.receiver.profile.age() }}{% endif %}
+              </a>
+              <p class="member-location">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ w.receiver.profile.state if w.receiver.profile else '' }}
+              </p>
+              <p class="wink-time"><i class="fas fa-clock"></i> {{ w.created_at.strftime('%d %b, %H:%M') }}</p>
+            </div>
+            <div class="member-actions">
+              <a href="{{ url_for('view_profile', username=w.receiver.username) }}" class="btn btn-outline btn-sm">View</a>
+              <a href="{{ url_for('conversation', username=w.receiver.username) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-comment"></i>
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">😉</div>
+        <h3>You haven't winked at anyone yet</h3>
+        <p>Browse profiles and click the wink button to break the ice!</p>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse Members</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    this.classList.add('active');
+    document.getElementById(this.dataset.tab).style.display = 'block';
+  });
+});
+
+// Wink-back buttons
+document.querySelectorAll('.wink-back-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const uid  = this.dataset.uid;
+    const name = this.dataset.name;
+    this.disabled = true;
+    fetch(`/wink/${uid}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        showToast(d.message || `Winked back at ${name}! 😉`);
+        this.textContent = '😉 Winked!';
+        this.style.opacity = '.6';
+      })
+      .catch(() => { this.disabled = false; });
+  });
+});
+</script>
+{% endblock %}

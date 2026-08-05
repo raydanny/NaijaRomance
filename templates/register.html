@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Join Free — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">💚</div>
+      <h1>Join NaijaRomance Free</h1>
+      <p>Find your perfect match across Nigeria</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first_name">First Name <span class="req">*</span></label>
+          <input type="text" id="first_name" name="first_name" class="form-control"
+                 value="{{ form.get('first_name','') }}" placeholder="Your first name" required/>
+        </div>
+        <div class="form-group">
+          <label for="username">Username <span class="req">*</span></label>
+          <div class="username-wrap">
+            <input type="text" id="username" name="username" class="form-control"
+                   value="{{ form.get('username','') }}" placeholder="e.g. naija_king"
+                   required minlength="3" autocomplete="off"/>
+            <span class="username-status" id="usernameStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address <span class="req">*</span></label>
+        <input type="email" id="email" name="email" class="form-control"
+               value="{{ form.get('email','') }}" placeholder="your@email.com" required/>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="gender">I am a <span class="req">*</span></label>
+          <select id="gender" name="gender" class="form-control" required>
+            <option value="">Select...</option>
+            <option value="Male" {% if form.get('gender')=='Male' %}selected{% endif %}>Man</option>
+            <option value="Female" {% if form.get('gender')=='Female' %}selected{% endif %}>Woman</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="seeking">Looking for <span class="req">*</span></label>
+          <select id="seeking" name="seeking" class="form-control" required>
+            <option value="">Select...</option>
+            <option value="Female" {% if form.get('seeking')=='Female' %}selected{% endif %}>Women</option>
+            <option value="Male" {% if form.get('seeking')=='Male' %}selected{% endif %}>Men</option>
+            <option value="Both" {% if form.get('seeking')=='Both' %}selected{% endif %}>Both</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="date_of_birth">Date of Birth <span class="req">*</span></label>
+          <input type="date" id="date_of_birth" name="date_of_birth" class="form-control"
+                 value="{{ form.get('date_of_birth','') }}" required/>
+          <span class="form-hint" id="dobHint"></span>
+        </div>
+        <div class="form-group">
+          <label for="state">State <span class="req">*</span></label>
+          <select id="state" name="state" class="form-control" required>
+            <option value="">Select state...</option>
+            {% for s in states %}
+              <option value="{{ s }}" {% if form.get('state')==s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="password">Password <span class="req">*</span></label>
+          <div class="input-eye">
+            <input type="password" id="password" name="password" class="form-control"
+                   placeholder="Min 6 characters" required minlength="6"/>
+            <button type="button" class="eye-btn" onclick="togglePw('password')"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="password2">Confirm Password <span class="req">*</span></label>
+          <div class="input-eye">
+            <input type="password" id="password2" name="password2" class="form-control"
+                   placeholder="Repeat password" required minlength="6"/>
+            <button type="button" class="eye-btn" onclick="togglePw('password2')"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">
+        <i class="fas fa-heart"></i> Create My Free Account
+      </button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in here</a></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+/* Set max date for DOB to 18 years ago */
+(function() {
+  const dobInput = document.getElementById('date_of_birth');
+  const dobHint  = document.getElementById('dobHint');
+  if (!dobInput) return;
+  const today    = new Date();
+  const maxDate  = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  const minDate  = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+  dobInput.max   = maxDate.toISOString().split('T')[0];
+  dobInput.min   = minDate.toISOString().split('T')[0];
+
+  dobInput.addEventListener('change', function() {
+    if (!this.value) return;
+    const dob = new Date(this.value);
+    let age   = today.getFullYear() - dob.getFullYear();
+    const m   = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    if (age < 18) {
+      dobHint.textContent = 'You must be at least 18 to join.';
+      dobHint.style.color = 'var(--red)';
+      this.setCustomValidity('Must be 18+');
+    } else {
+      dobHint.textContent = '';
+      this.setCustomValidity('');
+    }
+  });
+})();
+
+/* Username availability checker */
+const unInput  = document.getElementById('username');
+const unStatus = document.getElementById('usernameStatus');
+let unTimer;
+
+unInput.addEventListener('input', function() {
+  clearTimeout(unTimer);
+  const val = this.value.trim();
+  unStatus.className = 'username-status';
+  unStatus.textContent = '';
+  if (val.length < 3) return;
+  unStatus.textContent = '…';
+  unTimer = setTimeout(() => {
+    fetch(`/api/check-username?username=${encodeURIComponent(val)}`)
+      .then(r => r.json())
+      .then(data => {
+        unStatus.textContent = data.available ? '✓ ' + data.message : '✗ ' + data.message;
+        unStatus.className   = 'username-status ' + (data.available ? 'un-ok' : 'un-taken');
+      });
+  }, 500);
+});
+</script>
+{% endblock %}

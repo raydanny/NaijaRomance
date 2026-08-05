@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: naijaromance
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers=2 --threads=4 --timeout=120
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: postgresql://postgres:getitfree779@db.lbgfazcjlvrjhgobxlwj.supabase.co:5432/postgres
+      - key: SUPABASE_URL
+        value: https://lbgfazcjlvrjhgobxlwj.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZ2ZhemNqbHZyamhnb2J4bHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTk0MjQsImV4cCI6MjEwMTUzNTQyNH0.S5kA-8YrBoEF2HL2u_UNqcDWIotn1pBxs7v7Jnoz_k0
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+    healthCheckPath: /

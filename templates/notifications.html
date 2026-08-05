@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Notifications — NaijaRomance{% endblock %}
+{% block content %}
+<div class="container" style="max-width:680px; margin:2rem auto;">
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <h2><i class="fas fa-bell"></i> Notifications
+          {% if unread_before > 0 %}
+            <span class="badge" style="font-size:.75rem;vertical-align:middle">{{ unread_before }} new</span>
+          {% endif %}
+        </h2>
+      </div>
+      {% if notifs.total > 0 %}
+        <form method="POST" action="{{ url_for('notifications_clear') }}"
+              onsubmit="return confirm('Clear all notifications? This cannot be undone.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <button type="submit" class="btn btn-sm btn-outline" style="color:#636e72;border-color:#dfe6e9">
+            <i class="fas fa-trash-alt"></i> Clear All
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+    {% if notifs.items %}
+      <ul class="notif-list">
+        {% for n in notifs.items %}
+          <li class="notif-item">
+            <a href="{{ n.link() }}" class="notif-link">
+              <div class="notif-avatar-wrap">
+                <img src="{{ url_for('static', filename=n.actor.get_photo_url()) }}"
+                     class="notif-avatar" alt=""/>
+                <span class="notif-type-icon">
+                  {% if n.notif_type == 'like' %}❤️
+                  {% elif n.notif_type == 'match' %}💚
+                  {% elif n.notif_type == 'message' %}💬
+                  {% elif n.notif_type == 'wink' %}😉
+                  {% else %}👀{% endif %}
+                </span>
+              </div>
+              <div class="notif-body">
+                <p class="notif-text">{{ n.text() }}</p>
+                <span class="notif-time">{{ n.created_at | timeago }}</span>
+              </div>
+              <i class="fas fa-chevron-right notif-arrow"></i>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if notifs.pages > 1 %}
+        <div class="pagination" style="padding:1rem 1.5rem">
+          {% if notifs.has_prev %}
+            <a href="{{ url_for('notifications', page=notifs.prev_num) }}" class="page-btn">&laquo; Prev</a>
+          {% endif %}
+          {% for p in notifs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <a href="{{ url_for('notifications', page=p) }}"
+                 class="page-btn {% if p == notifs.page %}active{% endif %}">{{ p }}</a>
+            {% else %}
+              <span class="page-dots">…</span>
+            {% endif %}
+          {% endfor %}
+          {% if notifs.has_next %}
+            <a href="{{ url_for('notifications', page=notifs.next_num) }}" class="page-btn">Next &raquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🔔</div>
+        <h3>No notifications yet</h3>
+        <p>When someone likes, messages or views your profile, you'll see it here.</p>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">Browse Members</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

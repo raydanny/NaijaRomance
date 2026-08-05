@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}{{ user.profile.first_name if user.profile else user.username }} — NaijaRomance{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+  <div class="container">
+    <div class="profile-layout">
+
+      <!-- ── Left Sidebar ─────────────────────────────────── -->
+      <div class="profile-sidebar">
+        <!-- Main Photo — click opens lightbox -->
+        <div class="profile-photo-box">
+          <img src="{{ url_for('static', filename=user.get_photo_url()) }}"
+               class="profile-main-photo lightbox-trigger" id="mainPhoto"
+               data-src="{{ url_for('static', filename=user.get_photo_url()) }}"
+               alt="{{ user.username }}" style="cursor:zoom-in"/>
+          {% if user.is_online() %}
+            <div class="online-badge"><span class="online-dot"></span> Online Now</div>
+          {% else %}
+            <div class="online-badge offline">
+              <i class="fas fa-clock" style="font-size:.7rem"></i>
+              {{ user.last_seen | timeago if user.last_seen else 'N/A' }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Thumbnail Gallery -->
+        {% if photos %}
+          <div class="photo-thumbs" id="photoThumbs">
+            {% for p in photos %}
+              <img src="{{ url_for('static', filename='uploads/' + p.filename) }}"
+                   class="photo-thumb {% if p.is_main %}active{% endif %} lightbox-trigger"
+                   data-src="{{ url_for('static', filename='uploads/' + p.filename) }}"
+                   data-index="{{ loop.index0 }}"
+                   onclick="switchMain(this)"
+                   style="cursor:zoom-in"/>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Actions -->
+        {% if not is_self %}
+          <div class="sidebar-actions">
+            <a href="{{ url_for('conversation', username=user.username) }}" class="btn btn-primary btn-block">
+              <i class="fas fa-comment-dots"></i> Send Message
+            </a>
+            <button class="btn btn-block {% if has_liked %}btn-liked{% else %}btn-outline{% endif %} like-toggle"
+                    data-uid="{{ user.id }}">
+              <i class="fas fa-heart"></i>
+              {% if has_liked %}Unlike{% else %}Like Profile{% endif %}
+            </button>
+            {% if mutual %}
+              <div class="mutual-badge"><i class="fas fa-heart"></i> Mutual Match!</div>
+            {% endif %}
+            <button class="btn btn-block btn-wink wink-send-btn" data-uid="{{ user.id }}"
+                    {% if has_winked %}disabled title="Wink already sent"{% endif %}>
+              {% if has_winked %}
+                😉 Wink Sent!
+              {% else %}
+                😉 Send a Wink
+              {% endif %}
+            </button>
+            <form method="POST" action="{{ url_for('block_user', user_id=user.id) }}" style="margin-top:6px">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" name="next" value="{{ url_for('browse') }}"/>
+              <button type="submit" class="btn btn-sm btn-danger btn-block"
+                      onclick="return confirm('Block this user? They will not be able to see or message you.')">
+                <i class="fas fa-ban"></i> Block User
+              </button>
+            </form>
+            <a href="{{ url_for('report_user', user_id=user.id) }}"
+               class="btn btn-sm btn-block btn-report" style="margin-top:6px">
+              <i class="fas fa-flag"></i> Report User
+            </a>
+          </div>
+        {% else %}
+          <!-- Own profile: share link -->
+          <div class="sidebar-actions">
+            <a href="{{ url_for('edit_profile') }}" class="btn btn-primary btn-block">
+              <i class="fas fa-edit"></i> Edit My Profile
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline btn-block">
+              <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <button class="btn btn-outline btn-block share-profile-btn"
+                    data-url="{{ request.url }}"
+                    data-name="{{ user.profile.first_name if user.profile else user.username }}">
+              <i class="fas fa-share-alt"></i> Share My Profile
+            </button>
+            <div class="copy-link-wrap" id="copyLinkWrap" style="display:none">
+              <input type="text" class="copy-link-input" id="copyLinkInput"
+                     value="{{ request.url }}" readonly/>
+              <button class="btn btn-xs btn-primary" onclick="
+                document.getElementById('copyLinkInput').select();
+                document.execCommand('copy');
+                showToast('Link copied! 🔗');
+              ">Copy</button>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Profile strength mini bar -->
+        <div class="sidebar-strength">
+          <div class="strength-header" style="font-size:.8rem">
+            <span>Profile strength</span>
+            <span class="strength-pct {% if strength_score>=80 %}pct-great{% elif strength_score>=50 %}pct-ok{% else %}pct-low{% endif %}">
+              {{ strength_score }}%
+            </span>
+          </div>
+          <div class="strength-bar-bg" style="height:6px">
+            <div class="strength-bar-fill {% if strength_score>=80 %}fill-great{% elif strength_score>=50 %}fill-ok{% else %}fill-low{% endif %}"
+                 style="width:{{ strength_score }}%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Right Main ────────────────────────────────────── -->
+      <div class="profile-main">
+        <div class="profile-header">
+          <div class="profile-name-row">
+            <h1>
+              {{ user.profile.first_name if user.profile else user.username }}
+              {% if user.profile and user.profile.age() %}, {{ user.profile.age() }}{% endif %}
+            </h1>
+            {% if user.profile and user.profile.gender %}
+              <span class="gender-tag {{ user.profile.gender|lower }}">
+                <i class="fas fa-{{ 'mars' if user.profile.gender=='Male' else 'venus' }}"></i>
+                {{ user.profile.gender }}
+              </span>
+            {% endif %}
+          </div>
+          {% if user.profile %}
+            <p class="profile-location">
+              <i class="fas fa-map-marker-alt text-green"></i>
+              {% if user.profile.city %}{{ user.profile.city }}, {% endif %}{{ user.profile.state or '' }}
+            </p>
+          {% endif %}
+        </div>
+
+        {% if user.profile and user.profile.about_me %}
+          <div class="profile-section">
+            <h3><i class="fas fa-user"></i> About Me</h3>
+            <p class="about-text">{{ user.profile.about_me }}</p>
+          </div>
+        {% endif %}
+
+        {% if user.profile %}
+          <div class="profile-section">
+            <h3><i class="fas fa-info-circle"></i> Basic Info</h3>
+            <div class="info-grid">
+              {% set info_items = [
+                ('State',          user.profile.state),
+                ('Ethnicity',      user.profile.ethnicity),
+                ('Religion',       user.profile.religion),
+                ('Education',      user.profile.education),
+                ('Occupation',     user.profile.occupation),
+                ('Body Type',      user.profile.body_type),
+                ('Height',         (user.profile.height_cm|string + ' cm') if user.profile.height_cm else None),
+                ('Looking For',    user.profile.relationship_goal),
+                ('Interested In',  user.profile.seeking),
+              ] %}
+              {% for label, val in info_items %}
+                {% if val %}
+                  <div class="info-item">
+                    <span class="info-label">{{ label }}</span>
+                    <span class="info-val {% if label=='Looking For' %}goal-val{% endif %}">{{ val }}</span>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+
+          {% if user.profile.interests_list() %}
+            <div class="profile-section">
+              <h3><i class="fas fa-star"></i> Interests</h3>
+              <div class="interests-tags">
+                {% for interest in user.profile.interests_list() %}
+                  <span class="interest-tag">{{ interest }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+
+          {# Shared interests when viewing another person's profile #}
+          {% if not is_self and current_user.profile %}
+            {% set my_set = current_user.profile.interests_list() %}
+            {% set their_set = user.profile.interests_list() %}
+            {% set shared = [] %}
+            {% for i in my_set %}{% if i in their_set %}{% set _ = shared.append(i) %}{% endif %}{% endfor %}
+            {% if shared %}
+              <div class="profile-section shared-interests-section">
+                <h3><i class="fas fa-link"></i> You Both Enjoy</h3>
+                <div class="interests-tags">
+                  {% for interest in shared %}
+                    <span class="interest-tag interest-shared">{{ interest }}</span>
+                  {% endfor %}
+                </div>
+                <p class="shared-note">{{ shared|length }} shared interest{{ 's' if shared|length != 1 }} — great conversation starter!</p>
+              </div>
+            {% endif %}
+          {% endif %}
+        {% endif %}
+
+        <div class="profile-section profile-footer-row">
+          {% if is_self and view_count is not none %}
+            <span class="view-count-badge">
+              <i class="fas fa-eye"></i> {{ view_count }} profile view{{ 's' if view_count != 1 }}
+            </span>
+          {% endif %}
+          <p class="member-since">
+            <i class="fas fa-calendar"></i> Member since {{ user.created_at.strftime('%B %Y') }}
+          </p>
+          <p class="member-since" style="margin-top:4px">
+            <i class="fas fa-clock"></i> Last active {{ user.last_seen | timeago if user.last_seen else 'Unknown' }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Lightbox Overlay ──────────────────────────────────────────────────────── -->
+<div class="lightbox" id="lightbox" style="display:none">
+  <button class="lb-close" id="lbClose">×</button>
+  <button class="lb-prev"  id="lbPrev">&#8249;</button>
+  <button class="lb-next"  id="lbNext">&#8250;</button>
+  <div class="lb-img-wrap">
+    <img id="lbImg" src="" alt=""/>
+  </div>
+  <p class="lb-caption" id="lbCaption"></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Like toggle ── */
+const likeBtn = document.querySelector('.like-toggle');
+if (likeBtn) {
+  likeBtn.addEventListener('click', function() {
+    fetch(`/like/${this.dataset.uid}`, {method:'POST'}).then(r=>r.json()).then(data=>{
+      if (data.status==='liked') {
+        this.classList.replace('btn-outline','btn-liked');
+        this.innerHTML='<i class="fas fa-heart"></i> Unlike';
+        if (data.mutual) showToast('💚 It\'s a mutual match!');
+      } else {
+        this.classList.replace('btn-liked','btn-outline');
+        this.innerHTML='<i class="fas fa-heart"></i> Like Profile';
+      }
+    });
+  });
+}
+
+/* ── Wink ── */
+const winkBtn = document.querySelector('.wink-send-btn');
+if (winkBtn && !winkBtn.disabled) {
+  winkBtn.dataset.winkHandled = '1';  // prevent global handler firing too
+  winkBtn.addEventListener('click', function() {
+    fetch(`/wink/${this.dataset.uid}`, {method:'POST'}).then(r=>r.json()).then(d=>{
+      showToast(d.message || '😉 Wink sent!');
+      this.disabled = true;
+      this.style.opacity = '.6';
+      this.innerHTML = '😉 Wink Sent!';
+    });
+  });
+}
+
+/* ── Share profile ── */
+const shareBtn = document.querySelector('.share-profile-btn');
+if (shareBtn) {
+  shareBtn.addEventListener('click', function() {
+    const url  = this.dataset.url;
+    const name = this.dataset.name;
+    if (navigator.share) {
+      navigator.share({ title: name + ' on NaijaRomance', url });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => showToast('Profile link copied! 🔗'));
+    } else {
+      // Absolute fallback: show the copy-link input field
+      const wrap = document.getElementById('copyLinkWrap');
+      if (wrap) {
+        wrap.style.display = 'flex';
+        document.getElementById('copyLinkInput').select();
+      }
+    }
+  });
+}
+
+/* ── Switch main photo (thumbnail click) ── */
+function switchMain(thumb) {
+  document.getElementById('mainPhoto').src = thumb.src;
+  document.getElementById('mainPhoto').dataset.src = thumb.dataset.src;
+  document.querySelectorAll('.photo-thumb').forEach(t => t.classList.remove('active'));
+  thumb.classList.add('active');
+}
+
+/* ── Lightbox ── */
+const photos = [
+  {% for p in photos %}
+    { src: '{{ url_for("static", filename="uploads/" + p.filename) }}',
+      caption: 'Photo {{ loop.index }} of {{ photos|length }}' },
+  {% endfor %}
+];
+let lbIdx = 0;
+
+function openLightbox(idx) {
+  if (!photos.length) return;
+  lbIdx = idx;
+  const lb = document.getElementById('lightbox');
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  updateLightbox();
+}
+
+function updateLightbox() {
+  const img = document.getElementById('lbImg');
+  const cap = document.getElementById('lbCaption');
+  img.src = photos[lbIdx].src;
+  cap.textContent = photos[lbIdx].caption;
+  document.getElementById('lbPrev').style.display = lbIdx > 0 ? 'flex' : 'none';
+  document.getElementById('lbNext').style.display = lbIdx < photos.length-1 ? 'flex' : 'none';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.getElementById('lbClose').onclick = closeLightbox;
+document.getElementById('lbPrev').onclick  = () => { lbIdx--; updateLightbox(); };
+document.getElementById('lbNext').onclick  = () => { lbIdx++; updateLightbox(); };
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('lightbox');
+  if (lb.style.display==='none') return;
+  if (e.key==='Escape')     closeLightbox();
+  if (e.key==='ArrowLeft'  && lbIdx>0)              { lbIdx--; updateLightbox(); }
+  if (e.key==='ArrowRight' && lbIdx<photos.length-1){ lbIdx++; updateLightbox(); }
+});
+
+/* Attach lightbox triggers */
+document.querySelectorAll('.lightbox-trigger').forEach(el => {
+  el.addEventListener('click', () => {
+    const idx = parseInt(el.dataset.index || '0');
+    openLightbox(isNaN(idx) ? 0 : idx);
+  });
+});
+</script>
+{% endblock %}
