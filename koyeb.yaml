@@ -1,0 +1,30 @@
+name: naijaromance
+services:
+  - name: web
+    type: web
+    git:
+      repository: github.com/raydanny/NaijaRomance
+      branch: main
+    build:
+      buildpack:
+        build_command: pip install -r requirements.txt
+    run:
+      command: gunicorn app:app --workers=2 --threads=4 --timeout=120 --bind 0.0.0.0:8000
+    ports:
+      - port: 8000
+        protocol: http
+    env:
+      - key: DATABASE_URL
+        value: postgresql://postgres:getitfree779@db.lbgfazcjlvrjhgobxlwj.supabase.co:5432/postgres
+      - key: SECRET_KEY
+        value: naija-romance-super-secret-key-change-this-in-production-2024
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: SUPABASE_URL
+        value: https://lbgfazcjlvrjhgobxlwj.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZ2ZhemNqbHZyamhnb2J4bHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTk0MjQsImV4cCI6MjEwMTUzNTQyNH0.S5kA-8YrBoEF2HL2u_UNqcDWIotn1pBxs7v7Jnoz_k0
+    regions:
+      - fra
